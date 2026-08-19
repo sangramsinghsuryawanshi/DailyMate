@@ -1,0 +1,22 @@
+# Eclipse
+.metadata/
+.project
+.classpath
+.settings/
+
+# Maven
+target/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*
+!.env.example
+backend/src/main/resources/application-local.properties
+backend/src/main/resources/application-production.properties
+
+# OS
+.DS_Store
+Thumbs.db
