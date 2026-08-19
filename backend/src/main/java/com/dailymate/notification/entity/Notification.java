@@ -74,4 +74,13 @@ public class Notification {
     public void setRead(boolean read) { this.read = read; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+
+    public String getTargetType() { return targetType; }
+    public void setTargetType(String targetType) { this.targetType = targetType; }
+
+    public String getTargetId() { return targetId; }
+    public void setTargetId(String targetId) { this.targetId = targetId; }
+
+    public String getTargetUrl() { return targetUrl; }
+    public void setTargetUrl(String targetUrl) { this.targetUrl = targetUrl; }
 }
