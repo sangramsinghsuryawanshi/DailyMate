@@ -1,0 +1,42 @@
+{
+  "name": "AI Assistant Design Tokens & Layout",
+  "version": "1",
+  "tokens": {
+    "colors": {
+      "background": "#ffffff",
+      "panelBg": "#f8fafc",
+      "text": "#111827",
+      "muted": "#6b7280",
+      "primary": "#3b82f6",
+      "accent": "#10b981"
+    },
+    "radius": {
+      "small": "6",
+      "medium": "8",
+      "large": "12"
+    },
+    "spacing": {
+      "xs": "4",
+      "sm": "8",
+      "md": "12",
+      "lg": "16",
+      "xl": "24"
+    },
+    "typography": {
+      "bodySize": "14",
+      "titleSize": "16",
+      "family": "Arial, Helvetica, sans-serif",
+      "weights": { "regular": 400, "semibold": 600 }
+    },
+    "components": {
+      "compactChat": { "width": 360, "height": 420 },
+      "fullPage": { "leftWidth": 220, "rightWidth": 240 }
+    }
+  },
+  "layoutGuidelines": {
+    "gutter": 16,
+    "maxContentWidth": 1100,
+    "mobileBreak": 900
+  },
+  "exportNotes": "Copy the colors and spacing sections into Figma tokens. Border radii are in px. Typography sizes are px. Use spacing tokens for layout and gaps."
+}

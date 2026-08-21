@@ -1,8 +1,9 @@
-import axios from 'axios'
+﻿import axios from 'axios'
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1',
   headers: { 'Content-Type': 'application/json' },
+  timeout: 10000, // 10s timeout to avoid indefinite loading
 })
 
 let getAccessToken = () => null
@@ -24,6 +25,7 @@ function isAuthEndpoint(url = '') {
 apiClient.interceptors.request.use((config) => {
   const token = getAccessToken()
   if (token) {
+    config.headers = config.headers || {}
     config.headers.Authorization = `Bearer ${token}`
   }
   return config
@@ -57,7 +59,12 @@ apiClient.interceptors.response.use(
 
       const { data } = await refreshPromise
       onSessionUpdate(data)
-      originalRequest.headers.Authorization = `Bearer ${data.accessToken}`
+      // after session update, getAccessToken should return the new token
+      const newToken = getAccessToken()
+      if (newToken) {
+        originalRequest.headers = originalRequest.headers || {}
+        originalRequest.headers.Authorization = `Bearer ${newToken}`
+      }
       return apiClient(originalRequest)
     } catch (refreshError) {
       onSessionClear()

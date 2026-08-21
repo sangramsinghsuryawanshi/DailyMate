@@ -1,60 +1,57 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import Button from '../../components/Button'
-import Input from '../../components/Input'
 import MainLayout from '../../layouts/MainLayout'
+import ConversationList from '../components/ConversationList'
+import ContextPane from '../components/ContextPane'
+import MessageBubble from '../components/MessageBubble'
 import { createAssistantConversation, deleteAssistantConversation, getAssistantConversations, updateAssistantConversation } from '../services/assistantApi'
-
-const defaultForm = {
-  title: '',
-  prompt: '',
-  response: '',
-}
 
 export default function AssistantPage() {
   const queryClient = useQueryClient()
-  const [form, setForm] = useState(defaultForm)
-  const [editingId, setEditingId] = useState(null)
+  const [selectedId, setSelectedId] = useState(null)
+  const [composerText, setComposerText] = useState('')
 
   const { data = [], isLoading, isError } = useQuery({
     queryKey: ['assistant-conversations'],
     queryFn: getAssistantConversations,
   })
 
-  const promptCount = useMemo(() => data.length, [data])
+  const conversations = data || []
+  const selectedConversation = conversations.find((c) => c.id === selectedId) || conversations[0] || null
 
-  const saveMutation = useMutation({
-    mutationFn: (payload) => editingId ? updateAssistantConversation(editingId, payload) : createAssistantConversation(payload),
-    onSuccess: () => {
+  const createMutation = useMutation({
+    mutationFn: (payload) => createAssistantConversation(payload),
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['assistant-conversations'] })
-      setForm(defaultForm)
-      setEditingId(null)
+      setComposerText('')
+      setSelectedId(res.id)
     },
   })
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteAssistantConversation,
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }) => updateAssistantConversation(id, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['assistant-conversations'] }),
   })
 
-  function handleChange(event) {
-    const { name, value } = event.target
-    setForm((current) => ({ ...current, [name]: value }))
+  const deleteMutation = useMutation({
+    mutationFn: (id) => deleteAssistantConversation(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['assistant-conversations'] }),
+  })
+
+  function handleSend() {
+    if (!composerText.trim()) return
+    const payload = {
+      title: composerText.trim().slice(0, 60),
+      prompt: composerText.trim(),
+      response: '', // backend will populate once assistant processing is implemented
+    }
+    createMutation.mutate(payload)
   }
 
-  function handleSubmit(event) {
-    event.preventDefault()
-    saveMutation.mutate(form)
-  }
-
-  function handleEdit(conversation) {
-    setEditingId(conversation.id)
-    setForm({
-      title: conversation.title,
-      prompt: conversation.prompt,
-      response: conversation.response,
-    })
+  function handleUpdateResponse(newResponse) {
+    if (!selectedConversation) return
+    updateMutation.mutate({ id: selectedConversation.id, payload: { ...selectedConversation, response: newResponse } })
   }
 
   if (isLoading) return (
@@ -75,71 +72,43 @@ export default function AssistantPage() {
         <div>
           <p className="eyebrow">Smart support</p>
           <h1>DailyMate AI assistant</h1>
-          <p className="subtle-text">Capture a quick prompt and save a helpful personalized response for later.</p>
+          <p className="subtle-text">Capture quick prompts and interact with the assistant. Use the composer to start a new conversation.</p>
         </div>
         <Link to="/dashboard" className="btn btn-ghost">Back</Link>
       </section>
 
-      <section className="assistant-grid">
-        <div className="panel">
-          <div className="panel-header">
-            <h2>{editingId ? 'Edit prompt' : 'New prompt'}</h2>
+      <div className="assistant-page">
+        <ConversationList items={conversations.map((c) => ({ id: c.id, title: c.title, updatedAt: c.updatedAt }))} selectedId={selectedConversation?.id} onSelect={setSelectedId} />
+
+        <main className="assistant-thread" aria-live="polite">
+          <header className="assistant-thread-header">
+            <h2>{selectedConversation ? selectedConversation.title : 'New conversation'}</h2>
+            <div className="thread-actions">Model: <select><option>default</option></select></div>
+          </header>
+
+          <div className="messages-list">
+            {selectedConversation ? (
+              <>
+                <MessageBubble role="user" content={selectedConversation.prompt || ''} timestamp={selectedConversation.createdAt} />
+                <MessageBubble role="assistant" content={selectedConversation.response || 'Assistant response pending...'} timestamp={selectedConversation.updatedAt} />
+              </>
+            ) : (
+              <div className="empty-state"><p>No conversation selected.</p></div>
+            )}
           </div>
 
-          <form className="notification-form" onSubmit={handleSubmit}>
-            <Input label="Title" name="title" value={form.title} onChange={handleChange} required />
-
-            <label className="field">
-              <span>Prompt</span>
-              <textarea name="prompt" value={form.prompt} onChange={handleChange} required rows="4" />
-            </label>
-
-            <label className="field">
-              <span>Response</span>
-              <textarea name="response" value={form.response} onChange={handleChange} required rows="4" />
-            </label>
-
-            <div className="profile-actions">
-              <Button type="submit" disabled={saveMutation.isPending}>{saveMutation.isPending ? 'Saving…' : editingId ? 'Update entry' : 'Save response'}</Button>
-              {editingId && <Button variant="ghost" onClick={() => { setEditingId(null); setForm(defaultForm) }}>Cancel</Button>}
+          <div className="thread-composer">
+            <textarea className="composer-input" placeholder="Type your prompt" value={composerText} onChange={(e) => setComposerText(e.target.value)} />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="composer-send" onClick={handleSend} disabled={createMutation.isPending}>{createMutation.isPending ? 'Sending…' : 'Send'}</button>
+              {selectedConversation && <button className="composer-send" onClick={() => handleUpdateResponse(prompt('Enter assistant response to save:') || '')}>Save response</button>}
+              {selectedConversation && <button className="composer-send" onClick={() => deleteMutation.mutate(selectedConversation.id)}>Delete</button>}
             </div>
-          </form>
-        </div>
+          </div>
+        </main>
 
-        <aside className="panel summary-panel">
-          <div className="panel-header">
-            <h2>Memory</h2>
-          </div>
-          <div className="detail-list">
-            <li><strong>Saved prompts:</strong> {promptCount}</li>
-            <li><strong>Focus:</strong> Personal routines</li>
-            <li><strong>Tips:</strong> Keep prompts specific</li>
-          </div>
-
-          <div className="notification-list" style={{ marginTop: '1rem' }}>
-            {data.length === 0 ? (
-              <div className="empty-state">
-                <h3>No saved prompts yet</h3>
-                <p className="muted">Your useful prompts will appear here.</p>
-              </div>
-            ) : data.map((conversation) => (
-              <article key={conversation.id} className="notification-item">
-                <div className="notification-head">
-                  <span className="notification-badge reminder">Saved</span>
-                  <span className="small-muted">Prompt</span>
-                </div>
-                <h3>{conversation.title}</h3>
-                <p><strong>Prompt:</strong> {conversation.prompt}</p>
-                <p><strong>Response:</strong> {conversation.response}</p>
-                <div className="notification-actions">
-                  <Button variant="secondary" onClick={() => handleEdit(conversation)}>Edit</Button>
-                  <Button variant="ghost" onClick={() => deleteMutation.mutate(conversation.id)}>Delete</Button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </aside>
-      </section>
+        <ContextPane pageTitle="/dashboard" suggestedPrompts={["Show today's schedule", 'Add reminder']} />
+      </div>
     </MainLayout>
   )
 }

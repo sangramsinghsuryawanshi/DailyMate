@@ -10,4 +10,3 @@ export const updateNotification = (id, payload) => apiClient.patch(`/notificatio
 
 export const deleteNotification = (id) => apiClient.delete(`/notifications/${id}`)
 
-export const markAllRead = () => apiClient.post('/notifications/mark-all-read').then((response) => response.data)

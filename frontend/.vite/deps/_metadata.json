@@ -1,0 +1,49 @@
+{
+  "hash": "97d9fbd5",
+  "configHash": "967b650c",
+  "lockfileHash": "a790c9a8",
+  "browserHash": "c8b6b0da",
+  "optimized": {
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "3579615d",
+      "needsInterop": true
+    },
+    "@tanstack/react-query": {
+      "src": "../../node_modules/@tanstack/react-query/build/modern/index.js",
+      "file": "@tanstack_react-query.js",
+      "fileHash": "de4c38f6",
+      "needsInterop": false
+    },
+    "react-router-dom": {
+      "src": "../../node_modules/react-router-dom/dist/index.mjs",
+      "file": "react-router-dom.js",
+      "fileHash": "28fd276a",
+      "needsInterop": false
+    },
+    "axios": {
+      "src": "../../node_modules/axios/index.js",
+      "file": "axios.js",
+      "fileHash": "964e3ba8",
+      "needsInterop": false
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "3c55c383",
+      "needsInterop": true
+    }
+  },
+  "chunks": {
+    "chunk-LVEV2ZHB": {
+      "file": "chunk-LVEV2ZHB.js"
+    },
+    "chunk-ONJ4MSZD": {
+      "file": "chunk-ONJ4MSZD.js"
+    },
+    "chunk-4MBMRILA": {
+      "file": "chunk-4MBMRILA.js"
+    }
+  }
+}
