@@ -19,7 +19,7 @@ public class CommunityComplaintService {
     }
 
     public List<CommunityComplaintResponse> getComplaints() {
-        return complaints.findAll().stream()
+        return complaints.findAllByOrderByCreatedAtDesc().stream()
                 .map(this::toResponse)
                 .toList();
     }

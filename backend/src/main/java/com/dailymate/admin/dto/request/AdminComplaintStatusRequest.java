@@ -5,6 +5,6 @@ import jakarta.validation.constraints.Pattern;
 
 public record AdminComplaintStatusRequest(
         @NotBlank(message = "Status is required")
-        @Pattern(regexp = "^(OPEN|IN_REVIEW|RESOLVED)$", message = "Status must be OPEN, IN_REVIEW, or RESOLVED")
+        @Pattern(regexp = "^(OPEN|IN_REVIEW|RESOLVED|REJECTED)$", message = "Status must be OPEN, IN_REVIEW, RESOLVED, or REJECTED")
         String status) {
 }

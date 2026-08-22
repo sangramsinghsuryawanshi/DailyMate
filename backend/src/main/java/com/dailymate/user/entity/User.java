@@ -54,4 +54,6 @@ public class User {
     public UserStatus getStatus() { return status; }
     public void setStatus(UserStatus status) { this.status = status; }
     public boolean isEmailVerified() { return emailVerified; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
 }

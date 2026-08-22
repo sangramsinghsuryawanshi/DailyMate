@@ -17,12 +17,13 @@ const defaultForm = {
 
 export default function MedicinePage() {
   const [form, setForm] = useState(defaultForm)
-  const [renameTarget, setRenameTarget] = useState(null)
-  const [renameDraft, setRenameDraft] = useState('')
-  const [renameError, setRenameError] = useState('')
+  const [editTarget, setEditTarget] = useState(null)
+  const [editForm, setEditForm] = useState(null)
+  const [formError, setFormError] = useState('')
+  const [editError, setEditError] = useState('')
   const queryClient = useQueryClient()
 
-  const { data = [], isLoading, isError } = useQuery({
+  const { data: reminders = [], isLoading, isError } = useQuery({
     queryKey: ['medicine-reminders'],
     queryFn: getReminders,
   })
@@ -32,23 +33,23 @@ export default function MedicinePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medicine-reminders'] })
       setForm(defaultForm)
+      setFormError('')
+    },
+    onError: (err) => {
+      setFormError(err.response?.data?.detail || err.response?.data?.message || 'Failed to create reminder.')
     },
   })
 
-  const toggleMutation = useMutation({
+  const updateMutation = useMutation({
     mutationFn: ({ id, payload }) => updateReminder(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medicine-reminders'] })
+      setEditTarget(null)
+      setEditForm(null)
+      setEditError('')
     },
-  })
-
-  const renameMutation = useMutation({
-    mutationFn: ({ id, name }) => updateReminder(id, { name }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['medicine-reminders'] })
-      setRenameTarget(null)
-      setRenameDraft('')
-      setRenameError('')
+    onError: (err) => {
+      setEditError(err.response?.data?.detail || err.response?.data?.message || 'Failed to update reminder.')
     },
   })
 
@@ -67,49 +68,99 @@ export default function MedicinePage() {
     }))
   }
 
+  function handleEditChange(event) {
+    const { name, value, type, checked } = event.target
+    setEditForm((current) => ({
+      ...current,
+      [name]: type === 'checkbox' ? checked : value,
+    }))
+  }
+
   function handleSubmit(event) {
     event.preventDefault()
-    createMutation.mutate(form)
+    setFormError('')
+
+    const payload = {
+      name: form.name.trim(),
+      dosage: form.dosage.trim(),
+      frequency: form.frequency.trim(),
+      remindAt: form.remindAt,
+      notes: form.notes.trim() || null,
+      active: form.active,
+    }
+
+    if (!payload.name || !payload.dosage || !payload.frequency || !payload.remindAt) {
+      setFormError('Please fill out all required fields.')
+      return
+    }
+
+    createMutation.mutate(payload)
   }
 
-  function openRenameDialog(reminder) {
-    setRenameTarget(reminder)
-    setRenameDraft(reminder.name)
-    setRenameError('')
+  function openEditDialog(reminder) {
+    setEditTarget(reminder)
+    setEditForm({
+      name: reminder.name || '',
+      dosage: reminder.dosage || '',
+      frequency: reminder.frequency || 'Daily',
+      remindAt: reminder.remindAt ? reminder.remindAt.slice(0, 5) : '08:00',
+      notes: reminder.notes || '',
+      active: reminder.active ?? true,
+    })
+    setEditError('')
   }
 
-  function handleRenameSubmit(event) {
+  function handleEditSubmit(event) {
     event.preventDefault()
-    const trimmed = renameDraft.trim()
+    setEditError('')
 
-    if (!trimmed) {
-      setRenameError('Please enter a reminder name.')
+    const payload = {
+      name: editForm.name.trim(),
+      dosage: editForm.dosage.trim(),
+      frequency: editForm.frequency.trim(),
+      remindAt: editForm.remindAt,
+      notes: editForm.notes.trim() || null,
+      active: editForm.active,
+    }
+
+    if (!payload.name || !payload.dosage || !payload.frequency || !payload.remindAt) {
+      setEditError('Please fill out all required fields.')
       return
     }
 
-    const duplicate = data.some(
-      (item) => item.id !== renameTarget.id && item.name?.toLowerCase() === trimmed.toLowerCase(),
-    )
-
-    if (duplicate) {
-      setRenameError('This reminder name is already in use.')
-      return
-    }
-
-    renameMutation.mutate({ id: renameTarget.id, name: trimmed })
+    updateMutation.mutate({ id: editTarget.id, payload })
   }
 
-  if (isLoading) return (
-    <MainLayout>
-      <main className="page-state"><h1>Loading reminders…</h1></main>
-    </MainLayout>
-  )
+  function handleToggleActive(reminder) {
+    const payload = {
+      name: reminder.name,
+      dosage: reminder.dosage,
+      frequency: reminder.frequency,
+      remindAt: reminder.remindAt ? reminder.remindAt.slice(0, 5) : '08:00',
+      notes: reminder.notes,
+      active: !reminder.active,
+    }
+    updateMutation.mutate({ id: reminder.id, payload })
+  }
 
-  if (isError) return (
-    <MainLayout>
-      <main className="page-state"><h1>Medicine reminders unavailable</h1><Link to="/dashboard" className="btn btn-primary">Back to dashboard</Link></main>
-    </MainLayout>
-  )
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <main className="page-state"><h1>Loading reminders…</h1></main>
+      </MainLayout>
+    )
+  }
+
+  if (isError) {
+    return (
+      <MainLayout>
+        <main className="page-state">
+          <h1>Medicine reminders unavailable</h1>
+          <Link to="/dashboard" className="btn btn-primary">Back to dashboard</Link>
+        </main>
+      </MainLayout>
+    )
+  }
 
   return (
     <MainLayout>
@@ -128,59 +179,71 @@ export default function MedicinePage() {
             <h2>Add reminder</h2>
           </div>
 
+          {formError && (
+            <div style={{ color: '#ef4444', marginBottom: '1rem', padding: '0.5rem', background: '#fee2e2', borderRadius: '4px' }}>
+              {formError}
+            </div>
+          )}
+
           <form className="medicine-form" onSubmit={handleSubmit}>
             <div className="split-fields">
-              <Input label="Medicine name" name="name" value={form.name} onChange={handleChange} required />
-              <Input label="Dosage" name="dosage" value={form.dosage} onChange={handleChange} required />
+              <Input label="Medicine name" name="name" value={form.name} onChange={handleChange} maxLength={80} required />
+              <Input label="Dosage" name="dosage" value={form.dosage} onChange={handleChange} maxLength={80} required />
             </div>
 
             <div className="split-fields">
-              <Input label="Frequency" name="frequency" value={form.frequency} onChange={handleChange} />
+              <Input label="Frequency" name="frequency" value={form.frequency} onChange={handleChange} maxLength={40} required />
               <Input label="Reminder time" type="time" name="remindAt" value={form.remindAt} onChange={handleChange} required />
             </div>
 
             <label className="field">
               <span>Notes</span>
-              <textarea name="notes" value={form.notes} onChange={handleChange} rows="3" />
+              <textarea name="notes" value={form.notes} onChange={handleChange} rows="3" maxLength={500} placeholder="Special instructions, e.g. with food" />
             </label>
 
             <label className="field">
               <span />
-              <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+              <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', cursor: 'pointer' }}>
                 <input type="checkbox" name="active" checked={form.active} onChange={handleChange} />
                 Keep this reminder active
               </label>
             </label>
 
             <div className="profile-actions">
-              <Button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? 'Saving…' : 'Add reminder'}</Button>
+              <Button type="submit" disabled={createMutation.isPending}>
+                {createMutation.isPending ? 'Saving…' : 'Add reminder'}
+              </Button>
             </div>
           </form>
         </div>
 
         <div className="panel">
           <div className="panel-header">
-            <h2>Upcoming</h2>
+            <h2>Upcoming Reminders</h2>
+            <span>{reminders.length} scheduled</span>
           </div>
 
-          {data.length === 0 ? (
+          {reminders.length === 0 ? (
             <div className="empty-state">
               <h3>No reminders yet</h3>
-              <p className="muted">Add a reminder to see upcoming medicine times here.</p>
+              <p className="muted">Add a medication reminder on the left to organize your daily schedule.</p>
             </div>
           ) : (
             <div className="reminder-list">
-              {data.map((reminder) => (
-                <div key={reminder.id} className="reminder-item">
+              {reminders.map((reminder) => (
+                <div key={reminder.id} className="reminder-item" style={{ opacity: reminder.active ? 1 : 0.6 }}>
                   <div>
                     <strong>{reminder.name}</strong>
-                    <div className="small-muted">{reminder.dosage} · {reminder.frequency} · {reminder.remindAt}</div>
+                    {!reminder.active && <span className="status-pill" style={{ marginLeft: '0.5rem', fontSize: '0.75rem' }}>Paused</span>}
+                    <div className="small-muted">{reminder.dosage} · {reminder.frequency} · ⏰ {reminder.remindAt?.slice(0, 5)}</div>
                     {reminder.notes && <div className="small-muted">{reminder.notes}</div>}
                   </div>
 
                   <div className="reminder-actions">
-                    <Button variant="secondary" onClick={() => openRenameDialog(reminder)}>Rename</Button>
-                    <Button variant="secondary" onClick={() => toggleMutation.mutate({ id: reminder.id, payload: { ...reminder, active: !reminder.active } })}>{reminder.active ? 'Pause' : 'Resume'}</Button>
+                    <Button variant="secondary" onClick={() => openEditDialog(reminder)}>Edit</Button>
+                    <Button variant="secondary" onClick={() => handleToggleActive(reminder)}>
+                      {reminder.active ? 'Pause' : 'Resume'}
+                    </Button>
                     <Button variant="ghost" onClick={() => deleteMutation.mutate(reminder.id)}>Delete</Button>
                   </div>
                 </div>
@@ -190,32 +253,48 @@ export default function MedicinePage() {
         </div>
       </section>
 
-      {renameTarget && (
-        <div className="rename-dialog-backdrop" onClick={() => { setRenameTarget(null); setRenameError('') }}>
-          <div className="rename-dialog" onClick={(event) => event.stopPropagation()}>
+      {editTarget && editForm && (
+        <div className="rename-dialog-backdrop" onClick={() => { setEditTarget(null); setEditForm(null); setEditError('') }}>
+          <div className="rename-dialog" style={{ maxWidth: '560px' }} onClick={(event) => event.stopPropagation()}>
             <div className="panel-header">
-              <h2>Rename reminder</h2>
-              <button type="button" className="icon-button" aria-label="Close" onClick={() => { setRenameTarget(null); setRenameError('') }}>×</button>
+              <h2>Edit Medicine Reminder</h2>
+              <button type="button" className="icon-button" aria-label="Close" onClick={() => { setEditTarget(null); setEditForm(null); setEditError('') }}>×</button>
             </div>
 
-            <form className="rename-form" onSubmit={handleRenameSubmit}>
-              <Input
-                label="New reminder name"
-                value={renameDraft}
-                onChange={(event) => {
-                  setRenameDraft(event.target.value)
-                  if (renameError) setRenameError('')
-                }}
-                maxLength={100}
-                placeholder="Enter a new name"
-              />
+            {editError && (
+              <div style={{ color: '#ef4444', marginBottom: '1rem', padding: '0.5rem', background: '#fee2e2', borderRadius: '4px' }}>
+                {editError}
+              </div>
+            )}
 
-              {renameError && <p className="error">{renameError}</p>}
+            <form className="medicine-form" onSubmit={handleEditSubmit} style={{ marginTop: '1rem' }}>
+              <div className="split-fields">
+                <Input label="Medicine name" name="name" value={editForm.name} onChange={handleEditChange} maxLength={80} required />
+                <Input label="Dosage" name="dosage" value={editForm.dosage} onChange={handleEditChange} maxLength={80} required />
+              </div>
 
-              <div className="profile-actions">
-                <Button type="button" variant="ghost" onClick={() => { setRenameTarget(null); setRenameError('') }}>Cancel</Button>
-                <Button type="submit" disabled={renameMutation.isPending}>
-                  {renameMutation.isPending ? 'Saving…' : 'Save changes'}
+              <div className="split-fields">
+                <Input label="Frequency" name="frequency" value={editForm.frequency} onChange={handleEditChange} maxLength={40} required />
+                <Input label="Reminder time" type="time" name="remindAt" value={editForm.remindAt} onChange={handleEditChange} required />
+              </div>
+
+              <label className="field">
+                <span>Notes</span>
+                <textarea name="notes" value={editForm.notes} onChange={handleEditChange} rows="3" maxLength={500} />
+              </label>
+
+              <label className="field">
+                <span />
+                <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', cursor: 'pointer' }}>
+                  <input type="checkbox" name="active" checked={editForm.active} onChange={handleEditChange} />
+                  Reminder active
+                </label>
+              </label>
+
+              <div className="profile-actions" style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <Button type="button" variant="ghost" onClick={() => { setEditTarget(null); setEditForm(null); setEditError('') }}>Cancel</Button>
+                <Button type="submit" disabled={updateMutation.isPending}>
+                  {updateMutation.isPending ? 'Saving…' : 'Save changes'}
                 </Button>
               </div>
             </form>

@@ -67,6 +67,7 @@ public class LostFoundService {
     private LostItemPostResponse toResponse(LostItemPost post) {
         return new LostItemPostResponse(
                 post.getId(),
+                post.getUserId(),
                 post.getTitle(),
                 post.getItemType(),
                 post.getLocation(),

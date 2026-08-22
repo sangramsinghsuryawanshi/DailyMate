@@ -4,6 +4,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 
 public record GroceryItemRequest(
         @NotBlank(message = "Name is required")
@@ -19,8 +20,12 @@ public record GroceryItemRequest(
         String store,
 
         @NotNull(message = "Price is required")
-        @DecimalMin(value = "0.0", inclusive = true, message = "Price must be non-negative")
-        Double price,
+        @DecimalMin(value = "0.01", inclusive = true, message = "Price must be greater than zero")
+        BigDecimal price,
+
+        @NotBlank(message = "Unit is required")
+        @Size(max = 40, message = "Unit must be at most 40 characters")
+        String unit,
 
         @NotBlank(message = "Location is required")
         @Size(max = 160, message = "Location must be at most 160 characters")
