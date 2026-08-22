@@ -1,17 +1,21 @@
 import apiClient from '../../services/apiClient'
 
-export const getAssistantConversations = async () => {
-  try {
-    const response = await apiClient.get('/assistant/conversations')
-    return response.data
-  } catch (err) {
-    // Backend may be down in local dev — return empty list so UI remains usable
-    return []
-  }
-}
+export const getAssistantTools = () =>
+  apiClient.get('/assistant/tools').then((response) => response.data)
 
-export const createAssistantConversation = (payload) => apiClient.post('/assistant/conversations', payload).then((response) => response.data)
+export const getAssistantConversations = () =>
+  apiClient.get('/assistant/conversations').then((response) => response.data)
 
-export const updateAssistantConversation = (id, payload) => apiClient.patch(`/assistant/conversations/${id}`, payload).then((response) => response.data)
+export const sendAssistantChat = (prompt, conversationId = null) =>
+  apiClient.post('/assistant/chat', { prompt, conversationId }).then((response) => response.data)
 
-export const deleteAssistantConversation = (id) => apiClient.delete(`/assistant/conversations/${id}`)
+export const confirmAssistantAction = (actionId, idempotencyKey) =>
+  apiClient
+    .post(`/assistant/actions/${actionId}/confirm`, { idempotencyKey })
+    .then((response) => response.data)
+
+export const cancelAssistantAction = (actionId) =>
+  apiClient.post(`/assistant/actions/${actionId}/cancel`).then((response) => response.data)
+
+export const deleteAssistantConversation = (id) =>
+  apiClient.delete(`/assistant/conversations/${id}`).then((response) => response.data)

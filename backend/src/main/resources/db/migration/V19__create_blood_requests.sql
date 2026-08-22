@@ -1,0 +1,21 @@
+CREATE TABLE blood_requests (
+    id CHAR(36) NOT NULL,
+    user_id CHAR(36) NOT NULL,
+    patient_name VARCHAR(120) NOT NULL,
+    blood_group VARCHAR(10) NOT NULL,
+    units_needed INT NOT NULL,
+    hospital_location VARCHAR(160) NOT NULL,
+    urgency VARCHAR(20) NOT NULL DEFAULT 'STANDARD',
+    status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+    contact_name VARCHAR(80) NOT NULL,
+    contact_phone VARCHAR(80) NOT NULL,
+    additional_notes VARCHAR(1000),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_blood_requests_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    KEY idx_blood_requests_group (blood_group),
+    KEY idx_blood_requests_user (user_id),
+    KEY idx_blood_requests_status (status),
+    KEY idx_blood_requests_created_at (created_at DESC)
+);

@@ -13,6 +13,9 @@ const navItems = [
   { label: 'Medicines', to: '/medicines' },
   { label: 'Expenses', to: '/expenses' },
   { label: 'AI assistant', to: '/assistant' },
+  { label: 'Blood Donation', to: '/blood' },
+  { label: 'Lost & Found', to: '/lost-found' },
+  { label: 'Emergency', to: '/emergency-contacts' },
   { label: 'Events', to: '/events' },
   { label: 'Jobs', to: '/jobs' },
   { label: 'Grocery', to: '/grocery' },
@@ -24,6 +27,9 @@ const navItems = [
 const searchSuggestions = [
   { id: 'dashboard', title: 'Dashboard', category: 'Overview', description: 'Review your day, reminders, and quick actions.', to: '/dashboard', tags: ['overview', 'daily tasks'] },
   { id: 'marketplace', title: 'Marketplace', category: 'Services', description: 'Browse trusted local providers and service categories.', to: '/marketplace', tags: ['in-home help', 'plumber', 'tutor'] },
+  { id: 'blood', title: 'Blood Donation', category: 'Health', description: 'Find urgent blood requests or locate community donation centers.', to: '/blood', tags: ['blood donor', 'urgent blood', 'donation'] },
+  { id: 'emergency', title: 'Emergency Contacts', category: 'Support', description: 'Immediate emergency hotlines and personal ICE contacts.', to: '/emergency-contacts', tags: ['emergency', 'police', 'ambulance', 'fire', 'help'] },
+  { id: 'lost-found', title: 'Lost & Found', category: 'Community', description: 'Report missing items or help reunite community belongings.', to: '/lost-found', tags: ['missing', 'found', 'lost'] },
   { id: 'notifications', title: 'Notifications', category: 'Inbox', description: 'Track updates, reminders, and community alerts.', to: '/notifications', tags: ['updates', 'alerts'] },
   { id: 'profile', title: 'Profile', category: 'Account', description: 'Update your personal details and profile preferences.', to: '/profile', tags: ['account', 'settings'] },
 ]
@@ -127,6 +133,13 @@ export default function MainLayout({ children }) {
     setIsProfileMenuOpen(false)
   }
 
+  const sideNavItems = useMemo(() => {
+    if (user?.role === 'ADMIN') {
+      return [...navItems, { label: 'Admin Hub', to: '/admin' }]
+    }
+    return navItems
+  }, [user?.role])
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -136,11 +149,14 @@ export default function MainLayout({ children }) {
         </div>
 
         <nav className="side-nav" aria-label="Main navigation">
-          {navItems.map((item) => (
-            <Link key={item.to} to={item.to} className="nav-item">
-              {item.label}
-            </Link>
-          ))}
+          {sideNavItems.map((item) => {
+            const isActive = location.pathname === item.to || (item.to !== '/dashboard' && location.pathname.startsWith(item.to))
+            return (
+              <Link key={item.to} to={item.to} className={`nav-item ${isActive ? 'active' : ''}`}>
+                {item.label}
+              </Link>
+            )
+          })}
         </nav>
       </aside>
 
@@ -264,6 +280,11 @@ export default function MainLayout({ children }) {
                   <Link to="/notifications" className="profile-menu-item" onClick={() => setIsProfileMenuOpen(false)}>
                     Notifications
                   </Link>
+                  {user?.role === 'ADMIN' && (
+                    <Link to="/admin" className="profile-menu-item" onClick={() => setIsProfileMenuOpen(false)}>
+                      Admin Moderation
+                    </Link>
+                  )}
                   <button type="button" className="profile-menu-item profile-menu-button" onClick={handleSignOut}>
                     Sign out
                   </button>

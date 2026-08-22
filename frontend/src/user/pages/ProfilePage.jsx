@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useEffect, useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import Button from '../../components/Button'
 import Input from '../../components/Input'
@@ -9,28 +9,41 @@ import { useAuth } from '../../hooks/useAuth'
 
 export default function ProfilePage() {
   const { user, signIn } = useAuth()
+  const queryClient = useQueryClient()
   const [form, setForm] = useState({ firstName: user?.firstName ?? '', lastName: user?.lastName ?? '' })
+  const [saveSuccess, setSaveSuccess] = useState(false)
 
-  const { isLoading, isError } = useQuery({
+  const { data: profile, isLoading, isError } = useQuery({
     queryKey: ['profile'],
     queryFn: getProfile,
     enabled: !!user,
     staleTime: 60_000,
-    onSuccess: (profile) => {
-      setForm({ firstName: profile.firstName ?? '', lastName: profile.lastName ?? '' })
-    },
   })
+
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        firstName: profile.firstName ?? '',
+        lastName: profile.lastName ?? '',
+      })
+    }
+  }, [profile])
 
   const mutation = useMutation({
     mutationFn: updateProfile,
-    onSuccess: (profile) => {
-      signIn((current) => (current ? { ...current, user: profile } : current))
+    onSuccess: (updatedProfile) => {
+      queryClient.setQueryData(['profile'], updatedProfile)
+      signIn((current) => (current ? { ...current, user: updatedProfile } : current))
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 4000)
     },
   })
 
+  const currentProfile = profile || user
+
   const fullName = useMemo(
-    () => [form.firstName, form.lastName].filter(Boolean).join(' ') || 'DailyMate member',
-    [form.firstName, form.lastName],
+    () => [form.firstName || currentProfile?.firstName, form.lastName || currentProfile?.lastName].filter(Boolean).join(' ') || 'DailyMate member',
+    [form.firstName, form.lastName, currentProfile?.firstName, currentProfile?.lastName],
   )
 
   const initials = useMemo(
@@ -44,11 +57,13 @@ export default function ProfilePage() {
   )
 
   function handleChange(field, value) {
+    setSaveSuccess(false)
     setForm((current) => ({ ...current, [field]: value }))
   }
 
   function handleSubmit(event) {
     event.preventDefault()
+    setSaveSuccess(false)
     mutation.mutate({
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
@@ -76,6 +91,14 @@ export default function ProfilePage() {
     )
   }
 
+  const memberSince = currentProfile?.createdAt
+    ? new Date(currentProfile.createdAt).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+    : 'Active'
+
   return (
     <MainLayout>
       <section className="page-cover">
@@ -90,27 +113,28 @@ export default function ProfilePage() {
         <div className="panel profile-summary">
           <div className="profile-avatar">{initials}</div>
           <div className="profile-summary-copy">
-            <p className="eyebrow">Member</p>
+            <p className="eyebrow">Role: {currentProfile?.role ?? 'USER'}</p>
             <h2>{fullName}</h2>
-            <p className="muted">{user?.email ?? 'member@dailymate.app'}</p>
+            <p className="muted">{currentProfile?.email ?? 'member@dailymate.app'}</p>
           </div>
-          <span className="status-pill">Active</span>
+          <span className="status-pill">{currentProfile?.status ?? 'ACTIVE'}</span>
         </div>
 
         <div className="panel">
           <div className="panel-header">
-            <h2>Quick overview</h2>
+            <h2>Account Overview</h2>
           </div>
           <ul className="detail-list">
-            <li><strong>Focus:</strong> Home support and everyday planning</li>
-            <li><strong>Saved preferences:</strong> 18 items</li>
-            <li><strong>Care timeline:</strong> Updated this week</li>
+            <li><strong>Email:</strong> {currentProfile?.email ?? '—'}</li>
+            <li><strong>Role:</strong> {currentProfile?.role ?? 'USER'}</li>
+            <li><strong>Account Status:</strong> {currentProfile?.status ?? 'ACTIVE'}</li>
+            <li><strong>Member Since:</strong> {memberSince}</li>
           </ul>
         </div>
 
         <div className="panel profile-form-panel">
           <div className="panel-header">
-            <h2>Personal details</h2>
+            <h2>Personal Details</h2>
           </div>
 
           <form className="profile-form" onSubmit={handleSubmit}>
@@ -132,7 +156,17 @@ export default function ProfilePage() {
               />
             </div>
 
-            {mutation.isError && <p className="error">Unable to save your profile changes.</p>}
+            {saveSuccess && (
+              <p style={{ color: '#16a34a', margin: '0.75rem 0', fontWeight: '500' }}>
+                Profile updated successfully!
+              </p>
+            )}
+
+            {mutation.isError && (
+              <p className="error" style={{ color: '#ef4444', margin: '0.75rem 0' }}>
+                {mutation.error?.response?.data?.detail || mutation.error?.message || 'Unable to save profile changes.'}
+              </p>
+            )}
 
             <div className="profile-actions">
               <Button type="submit" disabled={isSubmitDisabled}>

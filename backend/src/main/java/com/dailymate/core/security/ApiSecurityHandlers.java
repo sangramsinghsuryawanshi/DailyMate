@@ -28,7 +28,7 @@ public class ApiSecurityHandlers {
 
     public AccessDeniedHandler accessDeniedHandler() {
         return (request, response, exception) ->
-                writeProblem(response, HttpStatus.UNAUTHORIZED, "Authentication required");
+                writeProblem(response, HttpStatus.FORBIDDEN, "Access denied");
     }
 
     private void writeProblem(HttpServletResponse response, HttpStatus status, String detail) throws java.io.IOException {

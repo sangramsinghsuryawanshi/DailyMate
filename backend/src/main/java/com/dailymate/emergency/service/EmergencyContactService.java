@@ -18,28 +18,51 @@ public class EmergencyContactService {
         this.contacts = contacts;
     }
 
-    public List<EmergencyContactResponse> getContacts() {
-        return contacts.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+    public List<EmergencyContactResponse> getPublicContacts(String category) {
+        String normalizedCategory = (category != null && !category.trim().isEmpty() && !category.equalsIgnoreCase("ALL"))
+                ? category.trim()
+                : null;
+
+        List<EmergencyContact> result = (normalizedCategory != null)
+                ? contacts.findAllByUserIdIsNullAndCategoryOrderByCreatedAtDesc(normalizedCategory)
+                : contacts.findAllByUserIdIsNullOrderByCreatedAtDesc();
+
+        return result.stream().map(this::toResponse).toList();
     }
 
-    public EmergencyContactResponse createContact(EmergencyContactRequest request) {
+    public List<EmergencyContactResponse> getMyContacts(String userId, String category) {
+        String normalizedCategory = (category != null && !category.trim().isEmpty() && !category.equalsIgnoreCase("ALL"))
+                ? category.trim()
+                : null;
+
+        List<EmergencyContact> result = (normalizedCategory != null)
+                ? contacts.findAllByUserIdAndCategoryOrderByCreatedAtDesc(userId, normalizedCategory)
+                : contacts.findAllByUserIdOrderByCreatedAtDesc(userId);
+
+        return result.stream().map(this::toResponse).toList();
+    }
+
+    @Transactional
+    public EmergencyContactResponse createContact(String userId, EmergencyContactRequest request) {
         EmergencyContact contact = new EmergencyContact();
+        contact.setUserId(userId);
         applyChanges(contact, request);
         return toResponse(contacts.save(contact));
     }
 
     @Transactional
-    public EmergencyContactResponse updateContact(String contactId, EmergencyContactRequest request) {
-        EmergencyContact contact = findContact(contactId);
+    public EmergencyContactResponse updateContact(String userId, String contactId, EmergencyContactRequest request) {
+        EmergencyContact contact = contacts.findByIdAndUserId(contactId, userId)
+                .orElseThrow(() -> new NotFoundException("Emergency contact not found"));
+
         applyChanges(contact, request);
         return toResponse(contacts.save(contact));
     }
 
     @Transactional
-    public void deleteContact(String contactId) {
-        EmergencyContact contact = findContact(contactId);
+    public void deleteContact(String userId, String contactId) {
+        EmergencyContact contact = contacts.findByIdAndUserId(contactId, userId)
+                .orElseThrow(() -> new NotFoundException("Emergency contact not found"));
         contacts.delete(contact);
     }
 
@@ -51,14 +74,10 @@ public class EmergencyContactService {
         contact.setDescription(request.description().trim());
     }
 
-    private EmergencyContact findContact(String contactId) {
-        return contacts.findById(contactId)
-                .orElseThrow(() -> new NotFoundException("Emergency contact not found"));
-    }
-
     private EmergencyContactResponse toResponse(EmergencyContact contact) {
         return new EmergencyContactResponse(
                 contact.getId(),
+                contact.getUserId(),
                 contact.getName(),
                 contact.getCategory(),
                 contact.getPhone(),

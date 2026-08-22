@@ -4,6 +4,7 @@ import java.time.Instant;
 
 public record LostItemPostResponse(
         String id,
+        String userId,
         String title,
         String itemType,
         String location,

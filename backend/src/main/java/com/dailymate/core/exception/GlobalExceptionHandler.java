@@ -18,9 +18,24 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.CONFLICT, exception.getMessage());
     }
 
+    @ExceptionHandler(TooManyRequestsException.class)
+    ProblemDetail handleTooManyRequests(TooManyRequestsException exception) {
+        return problem(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage());
+    }
+
+    @ExceptionHandler({BadRequestException.class, IllegalArgumentException.class})
+    ProblemDetail handleBadRequest(RuntimeException exception) {
+        return problem(HttpStatus.BAD_REQUEST, exception.getMessage());
+    }
+
     @ExceptionHandler(NotFoundException.class)
     ProblemDetail handleNotFound(NotFoundException exception) {
         return problem(HttpStatus.NOT_FOUND, exception.getMessage());
+    }
+
+    @ExceptionHandler({ForbiddenException.class, org.springframework.security.access.AccessDeniedException.class})
+    ProblemDetail handleForbidden(Exception exception) {
+        return problem(HttpStatus.FORBIDDEN, exception.getMessage() != null ? exception.getMessage() : "Access denied");
     }
 
     @ExceptionHandler({UnauthorizedException.class, BadCredentialsException.class})

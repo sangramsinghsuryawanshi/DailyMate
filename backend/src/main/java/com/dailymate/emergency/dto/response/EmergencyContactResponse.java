@@ -4,6 +4,7 @@ import java.time.Instant;
 
 public record EmergencyContactResponse(
         String id,
+        String userId,
         String name,
         String category,
         String phone,

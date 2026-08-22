@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -15,6 +16,9 @@ public class ServiceProvider {
     @Id
     @Column(length = 36, updatable = false, nullable = false)
     private String id;
+
+    @Column(name = "user_id", length = 36)
+    private String userId;
 
     @Column(nullable = false, length = 80)
     private String name;
@@ -34,6 +38,9 @@ public class ServiceProvider {
     @Column(length = 120)
     private String email;
 
+    @Column(name = "hourly_rate", precision = 12, scale = 2)
+    private BigDecimal hourlyRate;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -45,6 +52,8 @@ public class ServiceProvider {
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getCategory() { return category; }
@@ -57,5 +66,7 @@ public class ServiceProvider {
     public void setPhone(String phone) { this.phone = phone; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+    public BigDecimal getHourlyRate() { return hourlyRate; }
+    public void setHourlyRate(BigDecimal hourlyRate) { this.hourlyRate = hourlyRate; }
     public Instant getCreatedAt() { return createdAt; }
 }

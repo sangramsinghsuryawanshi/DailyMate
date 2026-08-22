@@ -16,6 +16,9 @@ public class EmergencyContact {
     @Column(length = 36, updatable = false, nullable = false)
     private String id;
 
+    @Column(name = "user_id", length = 36)
+    private String userId;
+
     @Column(nullable = false, length = 120)
     private String name;
 
@@ -42,6 +45,8 @@ public class EmergencyContact {
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getCategory() { return category; }
