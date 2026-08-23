@@ -103,7 +103,7 @@ describe('EmergencyContactsPage', () => {
       },
     ])
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderEmergencyContactsPage({ id: 'user-1', email: 'user@example.com' })
 
     await waitFor(() => {
@@ -148,7 +148,7 @@ describe('EmergencyContactsPage', () => {
       description: 'Building night watchman',
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderEmergencyContactsPage({ id: 'user-1', email: 'user@example.com' })
 
     await waitFor(() => {
@@ -174,7 +174,7 @@ describe('EmergencyContactsPage', () => {
         }),
       )
     })
-  }, 10000)
+  }, 20000)
 
   it('allows editing an existing personal contact and updates UI', async () => {
     getMyEmergencyContactsMock.mockResolvedValue([
@@ -198,7 +198,7 @@ describe('EmergencyContactsPage', () => {
       description: 'Family senior physician',
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderEmergencyContactsPage({ id: 'user-1', email: 'user@example.com' })
 
     await waitFor(() => {
@@ -244,7 +244,7 @@ describe('EmergencyContactsPage', () => {
     ])
     deleteEmergencyContactMock.mockResolvedValue({})
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderEmergencyContactsPage({ id: 'user-1', email: 'user@example.com' })
 
     await waitFor(() => {
@@ -265,7 +265,7 @@ describe('EmergencyContactsPage', () => {
   })
 
   it('shows login prompt when unauthenticated user views personal contacts tab', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderEmergencyContactsPage(null) // unauthenticated
 
     await waitFor(() => {

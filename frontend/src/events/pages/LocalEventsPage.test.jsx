@@ -111,7 +111,7 @@ describe('LocalEventsPage', () => {
       status: 'PUBLISHED',
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderLocalEventsPage({ id: 'user-1', email: 'user@example.com' })
 
     await waitFor(() => {
@@ -155,7 +155,7 @@ describe('LocalEventsPage', () => {
     ])
     updateLocalEventMock.mockResolvedValue({})
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderLocalEventsPage({ id: 'user-1', email: 'user@example.com' })
 
     await waitFor(() => {

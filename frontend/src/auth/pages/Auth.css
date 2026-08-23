@@ -1,0 +1,131 @@
+.dm-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dm-space-4, 1rem);
+  width: 100%;
+}
+
+.dm-auth-form__header {
+  margin-bottom: var(--dm-space-2, 0.5rem);
+}
+
+.dm-auth-form__header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--dm-color-text);
+  letter-spacing: -0.025em;
+}
+
+.dm-auth-form__header p {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.875rem;
+  color: var(--dm-color-text-soft);
+}
+
+.dm-split-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--dm-space-3, 0.75rem);
+}
+
+@media (min-width: 480px) {
+  .dm-split-fields {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.dm-password-field-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.dm-password-toggle-btn {
+  position: absolute;
+  top: 36px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.2rem;
+  color: var(--dm-color-text-soft);
+  z-index: 2;
+}
+
+.dm-auth-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 0.8125rem;
+}
+
+.dm-auth-link {
+  color: var(--dm-color-text-soft);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color var(--dm-transition-fast);
+}
+.dm-auth-link:hover {
+  color: var(--dm-color-primary);
+  text-decoration: underline;
+}
+
+.dm-auth-link--highlight {
+  color: var(--dm-color-primary-deep);
+  font-weight: 700;
+}
+
+.dm-auth-alert {
+  padding: var(--dm-space-3, 0.75rem);
+  border-radius: var(--dm-radius-sm, 8px);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.dm-auth-alert--error {
+  background-color: var(--dm-color-danger-subtle);
+  color: var(--dm-color-danger);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.dm-auth-alert--warning {
+  background-color: var(--dm-color-warning-subtle);
+  color: var(--dm-color-warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.dm-auth-footer-text {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--dm-color-text-soft);
+  margin-top: var(--dm-space-2, 0.5rem);
+}
+
+.dm-auth-success-box {
+  text-align: center;
+  padding: var(--dm-space-4, 1rem) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dm-space-3, 0.75rem);
+}
+
+.dm-auth-success-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.dm-auth-success-box h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--dm-color-text);
+}
+
+.dm-auth-success-box p {
+  margin: 0 0 var(--dm-space-4, 1rem) 0;
+  font-size: 0.875rem;
+  color: var(--dm-color-text-soft);
+  line-height: 1.5;
+}

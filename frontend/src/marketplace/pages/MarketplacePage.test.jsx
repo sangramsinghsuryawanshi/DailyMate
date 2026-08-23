@@ -81,7 +81,7 @@ describe('MarketplacePage', () => {
       hourlyRate: 60.0,
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderMarketplacePage({ id: 'u-1', email: 'owner@example.com' })
 
     await waitFor(() => {

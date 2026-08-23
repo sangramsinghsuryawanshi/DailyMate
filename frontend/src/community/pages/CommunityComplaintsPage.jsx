@@ -1,10 +1,21 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import Button from '../../components/Button'
-import Input from '../../components/Input'
 import MainLayout from '../../layouts/MainLayout'
 import { createCommunityComplaint, deleteCommunityComplaint, getCommunityComplaints, updateCommunityComplaint } from '../services/communityComplaintsApi'
+import { trackEvent, AnalyticsEvents } from '../../analytics/tracker'
+import {
+  Button,
+  Input,
+  Select,
+  Card,
+  StatCard,
+  Badge,
+  Pagination,
+  ResponsiveContainer,
+} from '../../design-system'
+import { usePagination } from '../../hooks/usePagination'
+import './CommunityComplaintsPage.css'
 
 const defaultForm = {
   title: '',
@@ -20,19 +31,43 @@ export default function CommunityComplaintsPage() {
   const [selectedStatus, setSelectedStatus] = useState('ALL')
   const [formError, setFormError] = useState('')
 
-  const { data = [], isLoading, isError } = useQuery({
-    queryKey: ['community-complaints'],
-    queryFn: getCommunityComplaints,
+  const { page, pageSize, setPage, setPageSize, resetPage } = usePagination({
+    initialPage: 0,
+    initialPageSize: 20,
+    syncWithUrl: true,
   })
 
-  const filteredComplaints = useMemo(() => {
-    if (selectedStatus === 'ALL') return data
-    return data.filter((item) => item.status === selectedStatus)
-  }, [data, selectedStatus])
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.PAGE_VIEW, { page: 'complaints' })
+  }, [])
 
-  const openCount = useMemo(() => data.filter((item) => item.status === 'OPEN').length, [data])
-  const inReviewCount = useMemo(() => data.filter((item) => item.status === 'IN_REVIEW').length, [data])
-  const resolvedCount = useMemo(() => data.filter((item) => item.status === 'RESOLVED').length, [data])
+  const { data: pageData = { content: [], totalElements: 0, totalPages: 0 }, isLoading, isError, refetch } = useQuery({
+    queryKey: ['community-complaints', { page, pageSize, selectedStatus }],
+    queryFn: () =>
+      getCommunityComplaints({
+        page,
+        size: pageSize,
+        status: selectedStatus !== 'ALL' ? selectedStatus : undefined,
+      }),
+    placeholderData: (previousData) => previousData,
+  })
+
+  const rawComplaints = useMemo(() => {
+    if (Array.isArray(pageData)) return pageData
+    return pageData.content ?? []
+  }, [pageData])
+
+  const totalElements = Array.isArray(pageData) ? pageData.length : (pageData.totalElements ?? rawComplaints.length)
+  const totalPages = Array.isArray(pageData) ? 1 : (pageData.totalPages ?? 1)
+
+  const filteredComplaints = useMemo(() => {
+    if (selectedStatus === 'ALL') return rawComplaints
+    return rawComplaints.filter((item) => item.status === selectedStatus)
+  }, [rawComplaints, selectedStatus])
+
+  const openCount = useMemo(() => rawComplaints.filter((item) => item.status === 'OPEN').length, [rawComplaints])
+  const inReviewCount = useMemo(() => rawComplaints.filter((item) => item.status === 'IN_REVIEW').length, [rawComplaints])
+  const resolvedCount = useMemo(() => rawComplaints.filter((item) => item.status === 'RESOLVED').length, [rawComplaints])
 
   const saveMutation = useMutation({
     mutationFn: (payload) => (editingId ? updateCommunityComplaint(editingId, payload) : createCommunityComplaint(payload)),
@@ -41,6 +76,7 @@ export default function CommunityComplaintsPage() {
       setForm(defaultForm)
       setEditingId(null)
       setFormError('')
+      trackEvent('complaint_saved')
     },
     onError: (err) => {
       setFormError(err.response?.data?.detail || err.response?.data?.message || 'Failed to submit report. Please ensure you are logged in.')
@@ -55,6 +91,7 @@ export default function CommunityComplaintsPage() {
         setEditingId(null)
         setForm(defaultForm)
       }
+      trackEvent('complaint_deleted')
     },
   })
 
@@ -89,6 +126,7 @@ export default function CommunityComplaintsPage() {
       location: complaint.location,
       description: complaint.description,
     })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function handleCancelEdit() {
@@ -100,7 +138,9 @@ export default function CommunityComplaintsPage() {
   if (isLoading) {
     return (
       <MainLayout>
-        <main className="page-state"><h1>Loading complaints…</h1></main>
+        <main className="page-state">
+          <h1>Loading community complaints…</h1>
+        </main>
       </MainLayout>
     )
   }
@@ -109,8 +149,10 @@ export default function CommunityComplaintsPage() {
     return (
       <MainLayout>
         <main className="page-state">
-          <h1>Complaints are unavailable</h1>
-          <Link to="/dashboard" className="btn btn-primary">Back to dashboard</Link>
+          <h1>Unable to load community complaints</h1>
+          <Link to="/dashboard">
+            <Button variant="primary">Back to dashboard</Button>
+          </Link>
         </main>
       </MainLayout>
     )
@@ -118,105 +160,245 @@ export default function CommunityComplaintsPage() {
 
   return (
     <MainLayout>
-      <section className="page-cover">
-        <div>
-          <p className="eyebrow">Community care</p>
-          <h1>Community complaints</h1>
-          <p className="subtle-text">Report neighborhood issues so local teams can respond quickly and keep everyone informed.</p>
-        </div>
-        <Link to="/dashboard" className="btn btn-ghost">Back</Link>
-      </section>
-
-      <section className="complaints-grid">
-        <div className="panel">
-          <div className="panel-header">
-            <h2>{editingId ? 'Edit report' : 'Report an issue'}</h2>
-          </div>
-
-          {formError && (
-            <div style={{ color: '#ef4444', marginBottom: '1rem', padding: '0.5rem', background: '#fee2e2', borderRadius: '4px' }}>
-              {formError}
+      <div className="dm-complaints-page">
+        <ResponsiveContainer size="wide">
+          {/* Header */}
+          <div className="dm-page-header-row">
+            <div>
+              <span className="dm-section-eyebrow">Civic Action & Transparency</span>
+              <h1 className="dm-page-main-title">Community Complaints</h1>
+              <p className="dm-page-subtitle">
+                Report neighborhood civic issues, track municipal resolution progress, and escalate infrastructure maintenance.
+              </p>
             </div>
-          )}
-
-          <form className="notification-form" onSubmit={handleSubmit}>
-            <div className="split-fields">
-              <Input label="Title" name="title" value={form.title} onChange={handleChange} maxLength={120} required />
-              <Input label="Category" name="category" value={form.category} onChange={handleChange} maxLength={80} required />
-            </div>
-
-            <Input label="Location" name="location" value={form.location} onChange={handleChange} maxLength={160} required />
-
-            <label className="field">
-              <span>Description</span>
-              <textarea name="description" value={form.description} onChange={handleChange} required rows="4" maxLength={1000} />
-            </label>
-
-            <div className="profile-actions" style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
-              <Button type="submit" disabled={saveMutation.isPending}>
-                {saveMutation.isPending ? 'Saving…' : editingId ? 'Update complaint' : 'Submit report'}
-              </Button>
-              {editingId && (
-                <Button type="button" variant="ghost" onClick={handleCancelEdit}>
-                  Cancel
+            <div className="dm-page-header-actions">
+              <Link to="/dashboard">
+                <Button variant="ghost" size="md">
+                  Back to dashboard
                 </Button>
-              )}
+              </Link>
             </div>
-          </form>
-        </div>
-
-        <aside className="panel summary-panel">
-          <div className="panel-header">
-            <h2>Report feed</h2>
-          </div>
-          <ul className="detail-list">
-            <li><strong>Total reports:</strong> {data.length}</li>
-            <li><strong>Open:</strong> {openCount}</li>
-            <li><strong>In Review:</strong> {inReviewCount}</li>
-            <li><strong>Resolved:</strong> {resolvedCount}</li>
-          </ul>
-
-          <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {['ALL', 'OPEN', 'IN_REVIEW', 'RESOLVED', 'REJECTED'].map((st) => (
-              <button
-                key={st}
-                type="button"
-                className={`btn btn-sm ${selectedStatus === st ? 'btn-primary' : 'btn-ghost'}`}
-                onClick={() => setSelectedStatus(st)}
-              >
-                {st}
-              </button>
-            ))}
           </div>
 
-          <div className="notification-list" style={{ marginTop: '1rem' }}>
-            {filteredComplaints.length === 0 ? (
-              <div className="empty-state">
-                <h3>No complaints reported</h3>
-                <p className="muted">No issues found matching the selected status filter.</p>
+          {/* Stats Grid */}
+          <div className="dm-complaints-stats-grid">
+            <StatCard
+              domain="community"
+              label="Total Complaints"
+              value={String(totalElements)}
+              trend="Reported"
+              trendDirection="neutral"
+              trendLabel="Civic tracking"
+              icon="📢"
+            />
+            <StatCard
+              domain="community"
+              label="Open Issues"
+              value={String(openCount)}
+              trend="Pending"
+              trendDirection={openCount > 0 ? 'down' : 'up'}
+              trendLabel="Awaiting inspection"
+              icon="⚠️"
+            />
+            <StatCard
+              domain="community"
+              label="In Progress"
+              value={String(inReviewCount)}
+              trend="Under Review"
+              trendDirection="neutral"
+              trendLabel="Assigned field team"
+              icon="🔄"
+            />
+            <StatCard
+              domain="community"
+              label="Resolved"
+              value={String(resolvedCount)}
+              trend="Completed"
+              trendDirection="up"
+              trendLabel="Verified by residents"
+              icon="✅"
+            />
+          </div>
+
+          {/* 2-Column Responsive Layout */}
+          <div className="dm-complaints-layout">
+            {/* Left Column: Complaints Feed */}
+            <div>
+              {/* Status Filter Bar */}
+              <div className="dm-complaints-filter-bar" role="tablist" aria-label="Complaint Status Filter">
+                <button
+                  type="button"
+                  className={`dm-category-filter-btn ${selectedStatus === 'ALL' ? 'active' : ''}`}
+                  onClick={() => setSelectedStatus('ALL')}
+                >
+                  ALL
+                </button>
+                <button
+                  type="button"
+                  className={`dm-category-filter-btn ${selectedStatus === 'OPEN' ? 'active' : ''}`}
+                  onClick={() => setSelectedStatus('OPEN')}
+                >
+                  OPEN
+                </button>
+                <button
+                  type="button"
+                  className={`dm-category-filter-btn ${selectedStatus === 'IN_REVIEW' ? 'active' : ''}`}
+                  onClick={() => setSelectedStatus('IN_REVIEW')}
+                >
+                  IN_REVIEW
+                </button>
+                <button
+                  type="button"
+                  className={`dm-category-filter-btn ${selectedStatus === 'RESOLVED' ? 'active' : ''}`}
+                  onClick={() => setSelectedStatus('RESOLVED')}
+                >
+                  RESOLVED
+                </button>
               </div>
-            ) : (
-              filteredComplaints.map((complaint) => (
-                <article key={complaint.id} className="notification-item">
-                  <div className="notification-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <span className="notification-badge info">{complaint.category}</span>
-                      <span className="small-muted">{complaint.location}</span>
-                    </div>
-                    <span className="status-pill">{complaint.status || 'OPEN'}</span>
+
+              {filteredComplaints.length === 0 ? (
+                <div className="dm-empty-dashboard-box">
+                  <h3>No community complaints found</h3>
+                  <p>There are no complaints under this filter status.</p>
+                </div>
+              ) : (
+                <div className="dm-complaints-card-feed">
+                  {filteredComplaints.map((item) => (
+                    <article key={item.id} className="dm-complaint-item-card">
+                      <div className="dm-complaint-item-header">
+                        <div>
+                          <h3 className="dm-complaint-item-title">{item.title}</h3>
+                          <div className="dm-complaint-meta" style={{ marginTop: '0.25rem' }}>
+                            <span>📁 {item.category}</span>
+                            <span>📍 {item.location}</span>
+                          </div>
+                        </div>
+                        <Badge
+                          variant={
+                            item.status === 'RESOLVED'
+                              ? 'success'
+                              : item.status === 'IN_REVIEW'
+                              ? 'warning'
+                              : 'primary'
+                          }
+                          size="md"
+                        >
+                          {item.status}
+                        </Badge>
+                      </div>
+
+                      <p style={{ color: 'var(--dm-color-text-soft)', fontSize: '0.875rem', lineHeight: 1.5, margin: 0 }}>
+                        {item.description}
+                      </p>
+
+                      <div className="dm-complaint-actions-row">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
+                          Edit
+                        </Button>
+                        <Button variant="danger" size="sm" onClick={() => deleteMutation.mutate(item.id)}>
+                          Delete
+                        </Button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+
+              {/* Server-Driven Pagination */}
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                totalElements={totalElements}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+                disabled={isLoading}
+              />
+            </div>
+
+            {/* Right Column: Sticky Form Card */}
+            <div>
+              <div className="dm-provider-side-card">
+                <div>
+                  <span className="dm-section-eyebrow">
+                    {editingId ? 'Edit Record' : 'Report an Issue'}
+                  </span>
+                  <h3 style={{ margin: '0.25rem 0', fontSize: '1.125rem' }}>
+                    {editingId ? 'Edit complaint' : 'Submit community report'}
+                  </h3>
+                  <p style={{ color: 'var(--dm-color-text-soft)', fontSize: '0.8125rem', margin: 0 }}>
+                    Report potholes, street light outages, garbage accumulation, or sanitation issues.
+                  </p>
+                </div>
+
+                {formError && (
+                  <div className="dm-form-alert dm-form-alert--error" role="alert">
+                    <span>⚠️ {formError}</span>
                   </div>
-                  <h3>{complaint.title}</h3>
-                  <p>{complaint.description}</p>
-                  <div className="notification-actions">
-                    <Button variant="secondary" onClick={() => handleEdit(complaint)}>Edit</Button>
-                    <Button variant="ghost" onClick={() => deleteMutation.mutate(complaint.id)}>Delete</Button>
+                )}
+
+                <form onSubmit={handleSubmit} className="dm-provider-modal-form">
+                  <Input
+                    id="complaint-title"
+                    name="title"
+                    label="Title"
+                    placeholder="e.g. Broken Street Light"
+                    value={form.title}
+                    onChange={handleChange}
+                    required
+                  />
+
+                  <Input
+                    id="complaint-category"
+                    name="category"
+                    label="Category"
+                    placeholder="e.g. Infrastructure, Roads, Sanitation"
+                    value={form.category}
+                    onChange={handleChange}
+                    required
+                  />
+
+                  <Input
+                    id="complaint-location"
+                    name="location"
+                    label="Location"
+                    placeholder="e.g. Oak Avenue near Main Cross"
+                    value={form.location}
+                    onChange={handleChange}
+                    required
+                  />
+
+                  <Input
+                    id="complaint-description"
+                    name="description"
+                    label="Description"
+                    placeholder="Provide details on the severity and safety risk"
+                    value={form.description}
+                    onChange={handleChange}
+                    required
+                  />
+
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    {editingId && (
+                      <Button type="button" variant="ghost" fullWidth onClick={handleCancelEdit}>
+                        Cancel Edit
+                      </Button>
+                    )}
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      fullWidth
+                      isLoading={saveMutation.isPending}
+                    >
+                      {editingId ? 'Save Changes' : 'Submit report'}
+                    </Button>
                   </div>
-                </article>
-              ))
-            )}
+                </form>
+              </div>
+            </div>
           </div>
-        </aside>
-      </section>
+        </ResponsiveContainer>
+      </div>
     </MainLayout>
   )
 }

@@ -1,14 +1,14 @@
 package com.dailymate.blood.controller;
 
-import com.dailymate.core.security.UserPrincipal;
 import com.dailymate.blood.dto.request.BloodRequestCreateRequest;
 import com.dailymate.blood.dto.request.BloodRequestUpdateRequest;
 import com.dailymate.blood.dto.request.DonationCenterRequest;
 import com.dailymate.blood.dto.response.BloodRequestResponse;
 import com.dailymate.blood.dto.response.DonationCenterResponse;
 import com.dailymate.blood.service.BloodDonationService;
+import com.dailymate.core.dto.response.PageResponse;
+import com.dailymate.core.security.UserPrincipal;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -35,8 +35,10 @@ public class BloodDonationController {
     // --- Donation Centers Endpoints ---
 
     @GetMapping("/centers")
-    public List<DonationCenterResponse> getCenters() {
-        return bloodDonationService.getCenters();
+    public PageResponse<DonationCenterResponse> getCenters(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return bloodDonationService.getCenters(page, size);
     }
 
     @PostMapping("/centers")
@@ -59,15 +61,20 @@ public class BloodDonationController {
     // --- Blood Requests Endpoints ---
 
     @GetMapping("/requests")
-    public List<BloodRequestResponse> getRequests(
+    public PageResponse<BloodRequestResponse> getRequests(
             @RequestParam(required = false) String bloodGroup,
-            @RequestParam(required = false) String status) {
-        return bloodDonationService.getRequests(bloodGroup, status);
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return bloodDonationService.getRequests(bloodGroup, status, page, size);
     }
 
     @GetMapping("/my-requests")
-    public List<BloodRequestResponse> getMyRequests(@AuthenticationPrincipal UserPrincipal principal) {
-        return bloodDonationService.getMyRequests(principal.user().getId());
+    public PageResponse<BloodRequestResponse> getMyRequests(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return bloodDonationService.getMyRequests(principal.user().getId(), page, size);
     }
 
     @PostMapping("/requests")

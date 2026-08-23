@@ -48,7 +48,8 @@ class GroceryComparisonControllerIntegrationTests {
     void anonymousCanReadPublicGroceryFeedButCannotAccessPrivateEndpointsOrMutate() throws Exception {
         // Public feed -> 200 OK
         mvc.perform(get("/api/v1/grocery/items"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
 
         // My items -> 401 Unauthorized
         mvc.perform(get("/api/v1/grocery/my-items"))
@@ -102,7 +103,7 @@ class GroceryComparisonControllerIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode searchArray = objectMapper.readTree(searchRes);
+        JsonNode searchArray = objectMapper.readTree(searchRes).get("content");
         assertTrue(searchArray.size() >= 1);
         for (JsonNode node : searchArray) {
             assertTrue(node.get("name").asText().toLowerCase().contains("milk"));
@@ -115,7 +116,7 @@ class GroceryComparisonControllerIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode catArray = objectMapper.readTree(catRes);
+        JsonNode catArray = objectMapper.readTree(catRes).get("content");
         assertTrue(catArray.size() >= 1);
         for (JsonNode node : catArray) {
             assertEquals("Dairy & Eggs", node.get("category").asText());
@@ -128,7 +129,7 @@ class GroceryComparisonControllerIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode storeArray = objectMapper.readTree(storeRes);
+        JsonNode storeArray = objectMapper.readTree(storeRes).get("content");
         assertTrue(storeArray.size() >= 1);
         for (JsonNode node : storeArray) {
             assertEquals("D-Mart", node.get("store").asText());
@@ -159,7 +160,7 @@ class GroceryComparisonControllerIntegrationTests {
         mvc.perform(get("/api/v1/grocery/my-items")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Aashirvaad Whole Wheat Atta"));
+                .andExpect(jsonPath("$.content[0].name").value("Aashirvaad Whole Wheat Atta"));
 
         // Update item
         GroceryItemRequest updateReq = new GroceryItemRequest(
@@ -206,7 +207,7 @@ class GroceryComparisonControllerIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode myItemsArray = objectMapper.readTree(myItemsB);
+        JsonNode myItemsArray = objectMapper.readTree(myItemsB).get("content");
         for (JsonNode item : myItemsArray) {
             assertEquals(false, itemId.equals(item.get("id").asText()));
         }

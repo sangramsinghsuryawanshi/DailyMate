@@ -1,11 +1,11 @@
 package com.dailymate.expense.controller;
 
+import com.dailymate.core.dto.response.PageResponse;
 import com.dailymate.core.security.UserPrincipal;
 import com.dailymate.expense.dto.request.ExpenseEntryRequest;
 import com.dailymate.expense.dto.response.ExpenseEntryResponse;
 import com.dailymate.expense.service.ExpenseService;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -29,8 +30,11 @@ public class ExpenseController {
     }
 
     @GetMapping
-    public List<ExpenseEntryResponse> getEntries(@AuthenticationPrincipal UserPrincipal principal) {
-        return expenses.getEntries(principal.user().getId());
+    public PageResponse<ExpenseEntryResponse> getEntries(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return expenses.getEntries(principal.user().getId(), page, size);
     }
 
     @PostMapping

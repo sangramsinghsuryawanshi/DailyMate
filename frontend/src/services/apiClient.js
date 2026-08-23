@@ -1,15 +1,19 @@
 ﻿import axios from 'axios'
 
+const apiBaseUrl =
+  import.meta.env.VITE_API_URL ??
+  `http://${window.location.hostname}:8080/api/v1`
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1',
+  baseURL: apiBaseUrl,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 10000, // 10s timeout to avoid indefinite loading
+  timeout: 10000,
 })
 
 let getAccessToken = () => null
 let getRefreshToken = () => null
-let onSessionUpdate = () => {}
-let onSessionClear = () => {}
+let onSessionUpdate = () => { }
+let onSessionClear = () => { }
 
 export function configureApiAuth({ getAccessToken: accessTokenGetter, getRefreshToken: refreshTokenGetter, onSessionUpdate: sessionUpdater, onSessionClear: sessionClearer }) {
   getAccessToken = accessTokenGetter

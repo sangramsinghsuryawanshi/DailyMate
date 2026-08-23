@@ -1,0 +1,46 @@
+.dm-trust-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--dm-radius-pill, 9999px);
+  user-select: none;
+  line-height: 1;
+}
+
+.dm-trust-badge--saved {
+  background-color: var(--dm-color-success-subtle);
+  color: var(--dm-color-success);
+}
+
+.dm-trust-badge--verified {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.dm-trust-badge--urgent {
+  background-color: var(--dm-color-danger-subtle);
+  color: var(--dm-color-danger);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  animation: dm-pulse 2s infinite;
+}
+
+.dm-trust-badge--private, .dm-trust-badge--encrypted {
+  background-color: var(--dm-color-surface-soft);
+  color: var(--dm-color-text-muted);
+  border: 1px solid var(--dm-color-border);
+}
+
+.dm-trust-badge--executed {
+  background-color: var(--dm-color-success-subtle);
+  color: var(--dm-color-success);
+}
+
+@keyframes dm-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}

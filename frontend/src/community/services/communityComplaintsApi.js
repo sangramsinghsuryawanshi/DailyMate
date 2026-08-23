@@ -1,6 +1,9 @@
 import apiClient from '../../services/apiClient'
 
-export const getCommunityComplaints = () => apiClient.get('/community-complaints/complaints').then((response) => response.data)
+export const getCommunityComplaints = (params = {}) => {
+  const query = typeof params === 'object' ? params : {}
+  return apiClient.get('/community-complaints/complaints', { params: query }).then((response) => response.data)
+}
 
 export const createCommunityComplaint = (payload) => apiClient.post('/community-complaints/complaints', payload).then((response) => response.data)
 

@@ -94,7 +94,7 @@ describe('ProfilePage', () => {
       createdAt: '2026-01-15T10:00:00Z',
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderProfilePage({ id: 'u-101', email: 'alex@example.com' })
 
     await waitFor(() => {

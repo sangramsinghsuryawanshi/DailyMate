@@ -4,8 +4,13 @@ import com.dailymate.community.dto.request.CommunityComplaintRequest;
 import com.dailymate.community.dto.response.CommunityComplaintResponse;
 import com.dailymate.community.entity.CommunityComplaint;
 import com.dailymate.community.repository.CommunityComplaintRepository;
+import com.dailymate.core.dto.response.PageResponse;
 import com.dailymate.core.exception.NotFoundException;
+import com.dailymate.core.util.PaginationUtils;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +21,18 @@ public class CommunityComplaintService {
 
     public CommunityComplaintService(CommunityComplaintRepository complaints) {
         this.complaints = complaints;
+    }
+
+    public PageResponse<CommunityComplaintResponse> getComplaints(String category, String status, String search, int page, int size) {
+        String cleanCategory = (category != null && !category.trim().isBlank() && !category.equalsIgnoreCase("all")) ? category.trim() : null;
+        String cleanStatus = (status != null && !status.trim().isBlank() && !status.equalsIgnoreCase("all")) ? status.trim() : null;
+        String cleanSearch = (search != null && !search.trim().isBlank()) ? search.trim() : null;
+
+        Sort sort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sort);
+        Page<CommunityComplaintResponse> responsePage = complaints.findFiltered(cleanCategory, cleanStatus, cleanSearch, pageable)
+                .map(this::toResponse);
+        return PageResponse.from(responsePage);
     }
 
     public List<CommunityComplaintResponse> getComplaints() {
@@ -64,6 +81,7 @@ public class CommunityComplaintService {
                 complaint.getDescription(),
                 complaint.getStatus(),
                 complaint.getCreatedAt(),
-                complaint.getUpdatedAt());
+                complaint.getUpdatedAt()
+        );
     }
 }

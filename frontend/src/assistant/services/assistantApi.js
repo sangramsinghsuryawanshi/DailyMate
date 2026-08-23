@@ -6,6 +6,9 @@ export const getAssistantTools = () =>
 export const getAssistantConversations = () =>
   apiClient.get('/assistant/conversations').then((response) => response.data)
 
+export const getAssistantConversationMessages = (conversationId) =>
+  apiClient.get(`/assistant/conversations/${conversationId}/messages`).then((response) => response.data)
+
 export const sendAssistantChat = (prompt, conversationId = null) =>
   apiClient.post('/assistant/chat', { prompt, conversationId }).then((response) => response.data)
 

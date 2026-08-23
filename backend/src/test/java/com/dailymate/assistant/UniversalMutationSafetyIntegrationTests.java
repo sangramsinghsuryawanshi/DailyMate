@@ -106,7 +106,7 @@ class UniversalMutationSafetyIntegrationTests {
     void invariant2_unauthorizedRoleIsDeniedServerSide() {
         // Assert registry denies GUEST role across all mutation tools
         toolRegistry.getAllTools().values().stream()
-                .filter(t -> t.operationType() == ToolOperationType.MUTATION)
+                .filter(t -> t.operationType() != ToolOperationType.READ && t.operationType() != ToolOperationType.REPORT)
                 .forEach(t -> {
                     org.junit.jupiter.api.Assertions.assertThrows(
                             com.dailymate.core.exception.ForbiddenException.class,
@@ -154,7 +154,7 @@ class UniversalMutationSafetyIntegrationTests {
         mvc.perform(get("/api/v1/expenses")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.totalElements").value(0));
     }
 
     @Test
@@ -190,7 +190,7 @@ class UniversalMutationSafetyIntegrationTests {
         mvc.perform(get("/api/v1/expenses")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+                .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @Test

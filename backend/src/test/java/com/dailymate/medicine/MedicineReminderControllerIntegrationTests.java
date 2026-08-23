@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.dailymate.auth.dto.request.RegisterRequest;
 import com.dailymate.medicine.dto.request.MedicineReminderRequest;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalTime;
 import org.junit.jupiter.api.Test;
@@ -50,7 +49,7 @@ class MedicineReminderControllerIntegrationTests {
                 .andExpect(status().isUnauthorized());
 
         MedicineReminderRequest request = new MedicineReminderRequest(
-                "Aspirin", "100mg", "Daily", LocalTime.of(8, 0), "With water", true);
+                "Aspirin", "100mg", "Daily", LocalTime.of(8, 0), null, true);
 
         mvc.perform(post("/api/v1/medicine-reminders")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -67,7 +66,7 @@ class MedicineReminderControllerIntegrationTests {
     }
 
     @Test
-    void createsAndListsRemindersInChronologicalOrder() throws Exception {
+    void createsAndListsRemindersWithServerPagination() throws Exception {
         String token = registerAndGetToken("chrono-order@example.com");
 
         // 1. Post Evening reminder (20:00)
@@ -101,13 +100,25 @@ class MedicineReminderControllerIntegrationTests {
         mvc.perform(get("/api/v1/medicine-reminders")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(3))
-                .andExpect(jsonPath("$[0].name").value("Thyroid Med"))
-                .andExpect(jsonPath("$[0].remindAt").value("08:00:00"))
-                .andExpect(jsonPath("$[1].name").value("Multivitamin"))
-                .andExpect(jsonPath("$[1].remindAt").value("12:30:00"))
-                .andExpect(jsonPath("$[2].name").value("Melatonin"))
-                .andExpect(jsonPath("$[2].remindAt").value("20:00:00"));
+                .andExpect(jsonPath("$.content.length()").value(3))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.content[0].name").value("Thyroid Med"))
+                .andExpect(jsonPath("$.content[0].remindAt").value("08:00:00"))
+                .andExpect(jsonPath("$.content[1].name").value("Multivitamin"))
+                .andExpect(jsonPath("$.content[1].remindAt").value("12:30:00"))
+                .andExpect(jsonPath("$.content[2].name").value("Melatonin"))
+                .andExpect(jsonPath("$.content[2].remindAt").value("20:00:00"));
+
+        // 5. Test pagination params
+        mvc.perform(get("/api/v1/medicine-reminders?page=0&size=2")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.hasNext").value(true));
     }
 
     @Test
@@ -134,7 +145,8 @@ class MedicineReminderControllerIntegrationTests {
         mvc.perform(get("/api/v1/medicine-reminders")
                         .header("Authorization", "Bearer " + tokenUserB))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0));
 
         // User B cannot PATCH User A's reminder -> 404
         MedicineReminderRequest updateAttempt = new MedicineReminderRequest(
@@ -210,6 +222,7 @@ class MedicineReminderControllerIntegrationTests {
         mvc.perform(get("/api/v1/medicine-reminders")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0));
     }
 }

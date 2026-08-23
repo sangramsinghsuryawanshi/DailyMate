@@ -34,7 +34,7 @@ describe('LoginPage', () => {
 
   it('shows an error when login fails', async () => {
     loginMock.mockRejectedValueOnce(new Error('Unauthorized'))
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderLoginPage()
 
     await user.type(screen.getByLabelText('Email'), 'member@example.com')
@@ -52,7 +52,7 @@ describe('LoginPage', () => {
       refreshToken: 'refresh-token',
       user: { firstName: 'Daily', lastName: 'Mate', email: 'member@example.com' },
     })
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderLoginPage()
 
     await user.type(screen.getByLabelText('Email'), 'member@example.com')

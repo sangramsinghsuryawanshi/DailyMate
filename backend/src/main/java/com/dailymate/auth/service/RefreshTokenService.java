@@ -47,11 +47,16 @@ public class RefreshTokenService {
 
     @Transactional
     public User rotate(String rawToken) {
-        RefreshToken token = tokens.findByTokenHash(hash(rawToken))
-                .filter(RefreshToken::isActive)
+        String tokenHash = hash(rawToken);
+        Instant now = Instant.now();
+        int updated = tokens.revokeIfActive(tokenHash, now, now);
+        if (updated == 0) {
+            throw new UnauthorizedException("Invalid or expired refresh token");
+        }
+        RefreshToken token = tokens.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new UnauthorizedException("Invalid or expired refresh token"));
-        token.setRevokedAt(Instant.now());
         return users.findById(token.getUserId())
+                .filter(u -> u.getStatus() == com.dailymate.user.entity.UserStatus.ACTIVE)
                 .orElseThrow(() -> new UnauthorizedException("Invalid or expired refresh token"));
     }
 

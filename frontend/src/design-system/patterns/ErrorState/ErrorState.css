@@ -1,0 +1,32 @@
+.dm-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--dm-space-6, 1.5rem) var(--dm-space-4, 1rem);
+  background-color: var(--dm-color-danger-subtle);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: var(--dm-radius-md, 12px);
+  max-width: 480px;
+  margin: var(--dm-space-4, 1rem) auto;
+}
+
+.dm-error-state__icon {
+  font-size: 2.25rem;
+  margin-bottom: var(--dm-space-2, 0.5rem);
+}
+
+.dm-error-state__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--dm-color-danger);
+}
+
+.dm-error-state__message {
+  margin: 0.35rem 0 var(--dm-space-4, 1rem) 0;
+  font-size: 0.875rem;
+  color: var(--dm-color-text);
+  line-height: 1.45;
+}

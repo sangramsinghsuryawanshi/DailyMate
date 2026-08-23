@@ -1,6 +1,9 @@
 import apiClient from '../../services/apiClient'
 
-export const getReminders = () => apiClient.get('/medicine-reminders').then((response) => response.data)
+export const getReminders = (params = {}) => {
+  const query = typeof params === 'object' ? params : {}
+  return apiClient.get('/medicine-reminders', { params: query }).then((response) => response.data)
+}
 
 export const createReminder = (payload) => apiClient.post('/medicine-reminders', payload).then((response) => response.data)
 

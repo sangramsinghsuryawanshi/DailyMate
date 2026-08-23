@@ -5,7 +5,7 @@ import com.dailymate.assistant.dto.BulkOperationPreviewDto;
 import com.dailymate.assistant.dto.request.AssistantActionExecutionRequest;
 import com.dailymate.assistant.dto.request.AssistantChatRequest;
 import com.dailymate.assistant.dto.request.BulkConfirmRequest;
-import com.dailymate.assistant.dto.request.BulkPreviewRequest;
+import com.dailymate.assistant.dto.request.CanonicalBulkRequest;
 import com.dailymate.assistant.dto.response.AssistantActionExecutionResponse;
 import com.dailymate.assistant.dto.response.AssistantChatResponse;
 import com.dailymate.assistant.dto.response.AssistantConversationResponse;
@@ -55,6 +55,13 @@ public class AssistantController {
         return assistantService.getConversations(principal.user().getId());
     }
 
+    @GetMapping("/conversations/{id}/messages")
+    public List<com.dailymate.assistant.dto.response.AssistantMessageResponse> getConversationMessages(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable String id) {
+        return assistantService.getConversationMessages(principal.user().getId(), id);
+    }
+
     @PostMapping("/chat")
     public ResponseEntity<AssistantChatResponse> chat(
             @AuthenticationPrincipal UserPrincipal principal,
@@ -93,13 +100,12 @@ public class AssistantController {
     @PostMapping("/bulk/preview")
     public ResponseEntity<BulkOperationPreviewDto> previewBulkOperation(
             @AuthenticationPrincipal UserPrincipal principal,
-            @Valid @RequestBody BulkPreviewRequest request) {
+            @Valid @RequestBody CanonicalBulkRequest request) {
         String role = principal.user().getRole() != null ? principal.user().getRole().name() : "USER";
         BulkOperationPreviewDto preview = bulkService.previewBulkOperation(
                 principal.user().getId(),
                 role,
-                request.toolName(),
-                request.payloadRows()
+                request
         );
         return ResponseEntity.ok(preview);
     }
@@ -111,11 +117,13 @@ public class AssistantController {
             @RequestBody(required = false) BulkConfirmRequest request) {
         String role = principal.user().getRole() != null ? principal.user().getRole().name() : "USER";
         String previewHash = request != null ? request.previewHash() : null;
+        String confirmationPhrase = request != null ? request.confirmationPhrase() : null;
         BulkExecutionResultDto result = bulkService.confirmBulkOperation(
                 principal.user().getId(),
                 role,
                 bulkExecutionId,
-                previewHash
+                previewHash,
+                confirmationPhrase
         );
         return ResponseEntity.ok(result);
     }

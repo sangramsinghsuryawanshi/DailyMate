@@ -7,13 +7,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.dailymate.assistant.dto.request.BulkConfirmRequest;
-import com.dailymate.assistant.dto.request.BulkPreviewRequest;
+import com.dailymate.assistant.dto.request.CanonicalBulkRequest;
 import com.dailymate.assistant.security.AssistantRateLimiter;
+import com.dailymate.assistant.tool.TargetSelectionMode;
 import com.dailymate.auth.dto.request.RegisterRequest;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,7 +66,7 @@ class UniversalBulkSafetyIntegrationTests {
         mvc.perform(post("/api/v1/assistant/bulk/preview")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkPreviewRequest("expense.bulkRecord", rows))))
+                        .content(objectMapper.writeValueAsString(new CanonicalBulkRequest("expense.bulkRecord", TargetSelectionMode.BY_IMPORT, Map.of(), rows, null, false))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalRows").value(3))
                 .andExpect(jsonPath("$.validRows").value(1))
@@ -78,7 +77,7 @@ class UniversalBulkSafetyIntegrationTests {
         mvc.perform(get("/api/v1/expenses")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.totalElements").value(0));
     }
 
     @Test
@@ -86,14 +85,14 @@ class UniversalBulkSafetyIntegrationTests {
         String userToken = registerAndGetToken("normal-user-bulk@example.com");
 
         List<Map<String, Object>> rows = List.of(
-                Map.of("providerIds", List.of("prov-1", "prov-2"), "targetStatus", "ACTIVE")
+                Map.of("providerIds", List.of("prov-1", "prov-2"))
         );
 
         // User invoking ADMIN-scoped bulk tool -> 403 Forbidden
         mvc.perform(post("/api/v1/assistant/bulk/preview")
                         .header("Authorization", "Bearer " + userToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkPreviewRequest("marketplace.adminBulkActivate", rows))))
+                        .content(objectMapper.writeValueAsString(new CanonicalBulkRequest("marketplace.admin.bulkVerify", TargetSelectionMode.BY_IDS, Map.of(), rows, "Admin verification", false))))
                 .andExpect(status().isForbidden());
     }
 
@@ -109,7 +108,7 @@ class UniversalBulkSafetyIntegrationTests {
         String previewBodyA = mvc.perform(post("/api/v1/assistant/bulk/preview")
                         .header("Authorization", "Bearer " + tokenA)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkPreviewRequest("expense.bulkRecord", createRowsA))))
+                        .content(objectMapper.writeValueAsString(new CanonicalBulkRequest("expense.bulkRecord", TargetSelectionMode.BY_IMPORT, Map.of(), createRowsA, null, false))))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -119,13 +118,13 @@ class UniversalBulkSafetyIntegrationTests {
         mvc.perform(post("/api/v1/assistant/bulk/{id}/confirm", execIdA)
                         .header("Authorization", "Bearer " + tokenA)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkConfirmRequest(previewHashA))))
+                        .content(objectMapper.writeValueAsString(new BulkConfirmRequest(previewHashA, null))))
                 .andExpect(status().isOk());
 
         String expensesA = mvc.perform(get("/api/v1/expenses")
                         .header("Authorization", "Bearer " + tokenA))
                 .andReturn().getResponse().getContentAsString();
-        String expenseIdA = objectMapper.readTree(expensesA).get(0).get("id").asText();
+        String expenseIdA = objectMapper.readTree(expensesA).get("content").get(0).get("id").asText();
 
         // User B attempts to bulk delete User A's expense
         List<Map<String, Object>> deleteRowsB = List.of(
@@ -134,42 +133,45 @@ class UniversalBulkSafetyIntegrationTests {
         String previewBodyB = mvc.perform(post("/api/v1/assistant/bulk/preview")
                         .header("Authorization", "Bearer " + tokenB)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkPreviewRequest("expense.bulkDelete", deleteRowsB))))
+                        .content(objectMapper.writeValueAsString(new CanonicalBulkRequest("expense.bulkDelete", TargetSelectionMode.BY_IDS, Map.of(), deleteRowsB, null, false))))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
         String execIdB = objectMapper.readTree(previewBodyB).get("bulkExecutionId").asText();
         String previewHashB = objectMapper.readTree(previewBodyB).get("previewHash").asText();
+        String confirmationPhraseB = objectMapper.readTree(previewBodyB).get("confirmationPhrase").asText();
 
-        // Execution for User B fails on User A's record (COMPLETED_WITH_ERRORS / FAILED)
+        // Bulk delete execution must FAIL for foreign records (0 succeeded, 1 failed)
         mvc.perform(post("/api/v1/assistant/bulk/{id}/confirm", execIdB)
                         .header("Authorization", "Bearer " + tokenB)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkConfirmRequest(previewHashB))))
+                        .content(objectMapper.writeValueAsString(new BulkConfirmRequest(previewHashB, confirmationPhraseB))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("FAILED"))
+                .andExpect(jsonPath("$.succeededRows").value(0))
                 .andExpect(jsonPath("$.failedRows").value(1));
 
-        // Verify User A's expense is intact
+        // User A's expense MUST still exist
         mvc.perform(get("/api/v1/expenses")
                         .header("Authorization", "Bearer " + tokenA))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+                .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @Test
     void bulkInvariant4_previewAndConfirmationMandate() throws Exception {
-        String token = registerAndGetToken("preview-mandate@example.com");
+        String token = registerAndGetToken("bulk-mandate@example.com");
 
         List<Map<String, Object>> rows = List.of(
-                Map.of("category", "Groceries", "description", "Milk & Eggs", "amount", 180.0),
-                Map.of("category", "Utilities", "description", "Wifi Recharge", "amount", 800.0)
+                Map.of("category", "Food", "description", "Lunch", "amount", 120.0),
+                Map.of("category", "Travel", "description", "Metro", "amount", 40.0)
         );
 
+        // Preview
         String previewBody = mvc.perform(post("/api/v1/assistant/bulk/preview")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkPreviewRequest("expense.bulkRecord", rows))))
+                        .content(objectMapper.writeValueAsString(new CanonicalBulkRequest("expense.bulkRecord", TargetSelectionMode.BY_IMPORT, Map.of(), rows, null, false))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PENDING"))
                 .andExpect(jsonPath("$.validRows").value(2))
@@ -179,7 +181,7 @@ class UniversalBulkSafetyIntegrationTests {
         mvc.perform(get("/api/v1/expenses")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.totalElements").value(0));
 
         // Confirm
         String execId = objectMapper.readTree(previewBody).get("bulkExecutionId").asText();
@@ -188,7 +190,7 @@ class UniversalBulkSafetyIntegrationTests {
         mvc.perform(post("/api/v1/assistant/bulk/{id}/confirm", execId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkConfirmRequest(previewHash))))
+                        .content(objectMapper.writeValueAsString(new BulkConfirmRequest(previewHash, null))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
                 .andExpect(jsonPath("$.succeededRows").value(2));
@@ -197,7 +199,7 @@ class UniversalBulkSafetyIntegrationTests {
         mvc.perform(get("/api/v1/expenses")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2));
+                .andExpect(jsonPath("$.totalElements").value(2));
     }
 
     @Test
@@ -211,7 +213,7 @@ class UniversalBulkSafetyIntegrationTests {
         String previewBody = mvc.perform(post("/api/v1/assistant/bulk/preview")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkPreviewRequest("expense.bulkRecord", rows))))
+                        .content(objectMapper.writeValueAsString(new CanonicalBulkRequest("expense.bulkRecord", TargetSelectionMode.BY_IMPORT, Map.of(), rows, null, false))))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -222,7 +224,7 @@ class UniversalBulkSafetyIntegrationTests {
         mvc.perform(post("/api/v1/assistant/bulk/{id}/confirm", execId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkConfirmRequest(previewHash))))
+                        .content(objectMapper.writeValueAsString(new BulkConfirmRequest(previewHash, null))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
                 .andExpect(jsonPath("$.succeededRows").value(1));
@@ -231,7 +233,7 @@ class UniversalBulkSafetyIntegrationTests {
         mvc.perform(post("/api/v1/assistant/bulk/{id}/confirm", execId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkConfirmRequest(previewHash))))
+                        .content(objectMapper.writeValueAsString(new BulkConfirmRequest(previewHash, null))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
                 .andExpect(jsonPath("$.succeededRows").value(1));
@@ -240,7 +242,7 @@ class UniversalBulkSafetyIntegrationTests {
         mvc.perform(get("/api/v1/expenses")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+                .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @Test
@@ -256,7 +258,7 @@ class UniversalBulkSafetyIntegrationTests {
         mvc.perform(post("/api/v1/assistant/bulk/preview")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkPreviewRequest("expense.bulkRecord", hugeBatch))))
+                        .content(objectMapper.writeValueAsString(new CanonicalBulkRequest("expense.bulkRecord", TargetSelectionMode.BY_IMPORT, Map.of(), hugeBatch, null, false))))
                 .andExpect(status().isBadRequest());
     }
 
@@ -272,7 +274,7 @@ class UniversalBulkSafetyIntegrationTests {
         String previewBody = mvc.perform(post("/api/v1/assistant/bulk/preview")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkPreviewRequest("expense.bulkRecord", mixedRows))))
+                        .content(objectMapper.writeValueAsString(new CanonicalBulkRequest("expense.bulkRecord", TargetSelectionMode.BY_IMPORT, Map.of(), mixedRows, null, false))))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -282,7 +284,7 @@ class UniversalBulkSafetyIntegrationTests {
         mvc.perform(post("/api/v1/assistant/bulk/{id}/confirm", execId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkConfirmRequest(previewHash))))
+                        .content(objectMapper.writeValueAsString(new BulkConfirmRequest(previewHash, null))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED_WITH_ERRORS"))
                 .andExpect(jsonPath("$.succeededRows").value(1))
@@ -300,7 +302,7 @@ class UniversalBulkSafetyIntegrationTests {
         String previewBody = mvc.perform(post("/api/v1/assistant/bulk/preview")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkPreviewRequest("expense.bulkRecord", rows))))
+                        .content(objectMapper.writeValueAsString(new CanonicalBulkRequest("expense.bulkRecord", TargetSelectionMode.BY_IMPORT, Map.of(), rows, null, false))))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -310,7 +312,7 @@ class UniversalBulkSafetyIntegrationTests {
         mvc.perform(post("/api/v1/assistant/bulk/{id}/confirm", execId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkConfirmRequest("tampered-hash-12345"))))
+                        .content(objectMapper.writeValueAsString(new BulkConfirmRequest("tampered-hash-12345", null))))
                 .andExpect(status().isConflict());
     }
 
@@ -327,7 +329,7 @@ class UniversalBulkSafetyIntegrationTests {
         String previewBody = mvc.perform(post("/api/v1/assistant/bulk/preview")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkPreviewRequest("expense.bulkRecord", rows))))
+                        .content(objectMapper.writeValueAsString(new CanonicalBulkRequest("expense.bulkRecord", TargetSelectionMode.BY_IMPORT, Map.of(), rows, null, false))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.validationErrors[0]").value(org.hamcrest.Matchers.containsString("Row 2")))
                 .andReturn().getResponse().getContentAsString();
@@ -338,7 +340,7 @@ class UniversalBulkSafetyIntegrationTests {
         mvc.perform(post("/api/v1/assistant/bulk/{id}/confirm", execId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new BulkConfirmRequest(previewHash))))
+                        .content(objectMapper.writeValueAsString(new BulkConfirmRequest(previewHash, null))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED_WITH_ERRORS"))
                 .andExpect(jsonPath("$.succeededRows").value(2))

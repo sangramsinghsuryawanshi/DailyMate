@@ -1,7 +1,9 @@
 import apiClient from '../../services/apiClient'
 
-export const getProviders = () =>
-  apiClient.get('/marketplace/providers').then((response) => response.data)
+export const getProviders = (params = {}) => {
+  const query = typeof params === 'object' ? params : {}
+  return apiClient.get('/marketplace/providers', { params: query }).then((response) => response.data)
+}
 
 export const getProvider = (id) =>
   apiClient.get(`/marketplace/providers/${id}`).then((response) => response.data)

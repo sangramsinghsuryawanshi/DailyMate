@@ -43,7 +43,12 @@ public class AssistantActionStateService {
             throw new ConflictException("Action is currently being processed.");
         }
 
-        // 3. Cancellation Check
+        // 3. Superseded Check
+        if (action.getStatus() == AssistantActionStatus.SUPERSEDED) {
+            throw new ConflictException("Action proposal has been superseded by a newer correction and cannot be executed.");
+        }
+
+        // 4. Cancellation Check
         if (action.getStatus() == AssistantActionStatus.CANCELLED) {
             throw new BadRequestException("Action proposal has been cancelled and cannot be executed.");
         }

@@ -1,12 +1,21 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
-import Button from '../../components/Button'
-import Input from '../../components/Input'
 import MainLayout from '../../layouts/MainLayout'
 import { formatINR } from '../../utils/formatters'
 import { createGroceryItem, deleteGroceryItem, getGroceryItems, getMyGroceryItems, updateGroceryItem } from '../services/groceryApi'
+import { trackEvent, AnalyticsEvents } from '../../analytics/tracker'
+import {
+  Button,
+  Input,
+  StatCard,
+  Badge,
+  Pagination,
+  ResponsiveContainer,
+} from '../../design-system'
+import { usePagination } from '../../hooks/usePagination'
+import './GroceryPage.css'
 
 const defaultForm = {
   name: '',
@@ -31,16 +40,50 @@ export default function GroceryPage() {
   const [selectedCategory, setSelectedCategory] = useState('ALL')
   const [searchQuery, setSearchQuery] = useState('')
 
-  const { data = [], isLoading, isError } = useQuery({
-    queryKey: ['grocery-items', selectedCategory, searchQuery],
-    queryFn: () => getGroceryItems({ search: searchQuery, category: selectedCategory }),
+  const { page, pageSize, setPage, setPageSize, resetPage } = usePagination({
+    initialPage: 0,
+    initialPageSize: 20,
+    syncWithUrl: true,
   })
 
-  const { data: myItems = [] } = useQuery({
-    queryKey: ['grocery-my-items'],
-    queryFn: getMyGroceryItems,
-    enabled: Boolean(user?.id),
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.PAGE_VIEW, { page: 'grocery' })
+  }, [])
+
+  const { data: pageData = { content: [], totalElements: 0, totalPages: 0 }, isLoading, isError } = useQuery({
+    queryKey: ['grocery-items', { page, pageSize, selectedCategory, searchQuery }],
+    queryFn: () =>
+      getGroceryItems({
+        page,
+        size: pageSize,
+        search: searchQuery,
+        category: selectedCategory !== 'ALL' ? selectedCategory : undefined,
+      }),
+    placeholderData: (previousData) => previousData,
   })
+
+  const { data: myPageData = { content: [], totalElements: 0, totalPages: 0 } } = useQuery({
+    queryKey: ['grocery-my-items', { page, pageSize }],
+    queryFn: () => getMyGroceryItems({ page, size: pageSize }),
+    enabled: Boolean(user?.id),
+    placeholderData: (previousData) => previousData,
+  })
+
+  const data = useMemo(() => {
+    if (Array.isArray(pageData)) return pageData
+    return pageData.content ?? []
+  }, [pageData])
+
+  const totalElements = Array.isArray(pageData) ? pageData.length : (pageData.totalElements ?? data.length)
+  const totalPages = Array.isArray(pageData) ? 1 : (pageData.totalPages ?? 1)
+
+  const myItems = useMemo(() => {
+    if (Array.isArray(myPageData)) return myPageData
+    return myPageData.content ?? []
+  }, [myPageData])
+
+  const totalMyElements = Array.isArray(myPageData) ? myPageData.length : (myPageData.totalElements ?? myItems.length)
+  const totalMyPages = Array.isArray(myPageData) ? 1 : (myPageData.totalPages ?? 1)
 
   // Group items by name+unit for price comparison
   const priceGroups = useMemo(() => {
@@ -67,6 +110,7 @@ export default function GroceryPage() {
       setForm(defaultForm)
       setEditingId(null)
       setFormError('')
+      trackEvent('grocery_price_saved')
     },
     onError: (err) => {
       setFormError(err.response?.data?.detail || err.response?.data?.message || 'Failed to save grocery item.')
@@ -82,6 +126,7 @@ export default function GroceryPage() {
         setEditingId(null)
         setForm(defaultForm)
       }
+      trackEvent('grocery_price_deleted')
     },
   })
 
@@ -94,38 +139,38 @@ export default function GroceryPage() {
     event.preventDefault()
     setFormError('')
 
-    if (!form.name.trim() || !form.store.trim() || !form.location.trim() || !form.unit.trim()) {
+    if (!form.name.trim() || !form.store.trim() || !form.location.trim() || !form.price) {
       setFormError('Please fill out all required fields.')
       return
     }
 
-    const numPrice = Number(form.price)
-    if (isNaN(numPrice) || numPrice <= 0) {
+    const numericPrice = parseFloat(form.price)
+    if (isNaN(numericPrice) || numericPrice <= 0) {
       setFormError('Price must be greater than zero.')
       return
     }
 
     saveMutation.mutate({
       name: form.name.trim(),
-      category: form.category.trim(),
+      category: form.category,
       store: form.store.trim(),
-      price: numPrice,
-      unit: form.unit.trim(),
+      price: numericPrice,
+      unit: form.unit,
       location: form.location.trim(),
     })
   }
 
   function handleEdit(item) {
     setEditingId(item.id)
-    setFormError('')
     setForm({
       name: item.name,
-      category: item.category,
+      category: item.category || 'Grains & Pulses',
       store: item.store,
       price: String(item.price),
-      unit: item.unit || '1 unit',
-      location: item.location,
+      unit: item.unit || '1 kg',
+      location: item.location || '',
     })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function handleCancelEdit() {
@@ -134,218 +179,396 @@ export default function GroceryPage() {
     setFormError('')
   }
 
-  if (isLoading) return (
-    <MainLayout>
-      <main className="page-state"><h1>Loading grocery prices…</h1></main>
-    </MainLayout>
-  )
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <main className="page-state">
+          <h1>Loading grocery price comparison…</h1>
+        </main>
+      </MainLayout>
+    )
+  }
 
-  if (isError) return (
-    <MainLayout>
-      <main className="page-state"><h1>Grocery comparison unavailable</h1><Link to="/dashboard" className="btn btn-primary">Back to dashboard</Link></main>
-    </MainLayout>
-  )
+  if (isError) {
+    return (
+      <MainLayout>
+        <main className="page-state">
+          <h1>Unable to load grocery prices</h1>
+          <Link to="/dashboard">
+            <Button variant="primary">Back to dashboard</Button>
+          </Link>
+        </main>
+      </MainLayout>
+    )
+  }
 
   return (
     <MainLayout>
-      <section className="page-cover">
-        <div>
-          <p className="eyebrow">Shopping</p>
-          <h1>Grocery Price Comparison</h1>
-          <p className="subtle-text">Compare local grocery prices across stores and find the best deals in your area.</p>
-        </div>
-        <Link to="/dashboard" className="btn btn-ghost">Back</Link>
-      </section>
-
-      {/* Tab Switcher — matches Emergency/Blood pattern */}
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          className={`btn ${activeTab === 'compare' ? 'btn-primary' : 'btn-ghost'}`}
-          onClick={() => setActiveTab('compare')}
-        >
-          🏷️ Price Comparison
-        </button>
-        <button
-          type="button"
-          className={`btn ${activeTab === 'my' ? 'btn-primary' : 'btn-ghost'}`}
-          onClick={() => setActiveTab('my')}
-        >
-          📝 My Submissions ({myItems.length})
-        </button>
-      </div>
-
-      <section className="complaints-grid">
-        {/* Main content column */}
-        <div>
-          {/* Search + Category Filter — inside panel, matches Emergency pattern */}
-          {activeTab === 'compare' && (
-            <div className="panel" style={{ marginBottom: '1.25rem' }}>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <input
-                  type="search"
-                  placeholder="Search products…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="form-input"
-                  aria-label="Search grocery products"
-                  style={{ width: '100%' }}
-                />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                <strong style={{ fontSize: '0.9rem', marginRight: '0.35rem' }}>Category:</strong>
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    className={`btn btn-small ${selectedCategory === cat ? 'btn-secondary' : 'btn-ghost'}`}
-                    onClick={() => setSelectedCategory(cat)}
-                  >
-                    {cat === 'ALL' ? 'All' : cat}
-                  </button>
-                ))}
-              </div>
+      <div className="dm-grocery-page">
+        <ResponsiveContainer size="wide">
+          {/* Header */}
+          <div className="dm-page-header-row">
+            <div>
+              <span className="dm-section-eyebrow">Household Supplies & Economy</span>
+              <h1 className="dm-page-main-title">Grocery Price Comparison</h1>
+              <p className="dm-page-subtitle">
+                Crowdsourced neighborhood supermarket prices, local kirana deals, and smart grocery expense optimization.
+              </p>
             </div>
-          )}
-
-          {/* Price Comparison Cards or My Submissions List */}
-          {activeTab === 'compare' ? (
-            priceGroups.length === 0 ? (
-              <div className="panel empty-state">
-                <h3>No grocery prices yet</h3>
-                <p className="muted">Be the first to submit local grocery prices for your community.</p>
-              </div>
-            ) : (
-              <div className="notification-list">
-                {priceGroups.map((group) => (
-                  <article key={`${group.name}|${group.unit}`} className="panel" style={{ marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.35rem' }}>
-                      <span className="notification-badge info">{group.items[0]?.category}</span>
-                      <span className="status-pill open">{group.unit}</span>
-                      {group.items.length > 1 && (
-                        <span className="status-pill resolved">{group.items.length} stores</span>
-                      )}
-                    </div>
-                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem' }}>{group.name}</h3>
-
-                    {group.items.map((item, idx) => (
-                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: idx < group.items.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                        <span>
-                          {idx === 0 && group.items.length > 1 && <span title="Best price">🏷️ </span>}
-                          <strong>{item.store}</strong>
-                          <span className="small-muted"> · {item.location}</span>
-                        </span>
-                        <strong style={{ color: idx === 0 && group.items.length > 1 ? 'var(--success)' : 'inherit', fontSize: '1.1rem' }}>
-                          {formatINR(item.price)}
-                        </strong>
-                      </div>
-                    ))}
-                  </article>
-                ))}
-              </div>
-            )
-          ) : (
-            /* My Submissions tab */
-            !user?.id ? (
-              <div className="panel empty-state">
-                <h3>Sign in to track your submissions</h3>
-                <p className="muted">Log in to submit and manage your own grocery price entries.</p>
-                <Link to="/login" className="btn btn-primary" style={{ marginTop: '0.75rem' }}>Log in to submit prices</Link>
-              </div>
-            ) : myItems.length === 0 ? (
-              <div className="panel empty-state">
-                <h3>No submissions yet</h3>
-                <p className="muted">Use the form to submit your first grocery price entry.</p>
-              </div>
-            ) : (
-              <div className="notification-list">
-                {myItems.map((item) => (
-                  <article key={item.id} className="panel" style={{ marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      <div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.35rem' }}>
-                          <span className="notification-badge info">{item.category}</span>
-                          <span className="status-pill open">{item.unit || '1 unit'}</span>
-                        </div>
-                        <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{item.name}</h3>
-                        <div className="small-muted" style={{ marginTop: '0.25rem' }}>
-                          🏪 {item.store} · 📍 {item.location}
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{formatINR(item.price)}</div>
-                        <div className="small-muted">per {item.unit || '1 unit'}</div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
-                      <Button variant="secondary" onClick={() => handleEdit(item)}>Edit</Button>
-                      <Button variant="ghost" onClick={() => deleteMutation.mutate(item.id)}>Delete</Button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )
-          )}
-        </div>
-
-        {/* Sidebar — Form + Summary (matches Emergency/Blood sidebar pattern) */}
-        <aside>
-          {/* Summary Stats */}
-          <div className="panel" style={{ marginBottom: '1.25rem' }}>
-            <div className="panel-header">
-              <h2>Price Overview</h2>
+            <div className="dm-page-header-actions">
+              <Link to="/dashboard">
+                <Button variant="ghost" size="md">
+                  Back to dashboard
+                </Button>
+              </Link>
             </div>
-            <ul className="detail-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              <li><strong>Products tracked:</strong> {priceGroups.length}</li>
-              <li><strong>Total price entries:</strong> {data.length}</li>
-              <li><strong>Stores compared:</strong> {new Set(data.map((i) => i.store)).size}</li>
-            </ul>
           </div>
 
-          {/* Submit Price Form */}
-          {user?.id && (
-            <div className="panel">
-              <div className="panel-header">
-                <h2>{editingId ? 'Edit price entry' : 'Submit a price'}</h2>
+          {/* Stats Grid */}
+          <div className="dm-grocery-stats-grid">
+            <StatCard
+              domain="expense"
+              label="Products Tracked"
+              value={String(priceGroups.length)}
+              trend="Catalog"
+              trendDirection="up"
+              trendLabel="Unique items"
+              icon="🛒"
+            />
+            <StatCard
+              domain="expense"
+              label="Price Submissions"
+              value={String(data.length)}
+              trend="Crowdsourced"
+              trendDirection="neutral"
+              trendLabel="Verified local rates"
+              icon="🏷️"
+            />
+            <StatCard
+              domain="expense"
+              label="My Contributions"
+              value={String(myItems.length)}
+              trend="Owner"
+              trendDirection="up"
+              trendLabel="Created by you"
+              icon="📌"
+            />
+            <StatCard
+              domain="expense"
+              label="Best Value Deals"
+              value="Live"
+              trend="Real-time"
+              trendDirection="up"
+              trendLabel="Lowest store rates"
+              icon="⚡"
+            />
+          </div>
+
+          {/* 2-Column Responsive Layout */}
+          <div className="dm-provider-profile-layout">
+            {/* Left Column: Compare Feed / My Submissions */}
+            <div>
+              {/* Tab Navigation */}
+              <div className="dm-events-toolbar">
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  <button
+                    type="button"
+                    className={`dm-category-filter-btn ${activeTab === 'compare' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('compare')}
+                  >
+                    Price Comparison
+                  </button>
+                  <button
+                    type="button"
+                    className={`dm-category-filter-btn ${activeTab === 'my' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('my')}
+                  >
+                    My Submissions ({myItems.length})
+                  </button>
+                </div>
               </div>
 
-              <form className="notification-form" onSubmit={handleSubmit}>
-                <Input label="Product name" name="name" value={form.name} onChange={handleChange} required />
+              {activeTab === 'compare' ? (
+                <div>
+                  {/* Search and Category Filters */}
+                  <div className="dm-grocery-toolbar">
+                    <input
+                      type="text"
+                      className="dm-search-input"
+                      style={{ padding: '0.625rem 1rem', width: '100%' }}
+                      placeholder="Search grocery products (e.g. Milk, Rice, Oil)..."
+                      aria-label="Search grocery products"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
 
-                <div className="form-group">
-                  <label htmlFor="category-select">Category</label>
-                  <select id="category-select" name="category" value={form.category} onChange={handleChange} className="form-input">
-                    {CATEGORIES.filter((c) => c !== 'ALL').map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
+                    <div className="dm-grocery-categories-bar">
+                      {CATEGORIES.map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          className={`dm-blood-group-pill ${selectedCategory === cat ? 'active' : ''}`}
+                          onClick={() => setSelectedCategory(cat)}
+                        >
+                          {cat === 'ALL' ? 'All' : cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {priceGroups.length === 0 ? (
+                    <div className="dm-empty-dashboard-box">
+                      <h3>No grocery prices yet</h3>
+                      <p>Be the first to submit a local store price using the submission form.</p>
+                    </div>
+                  ) : (
+                    <>
+                    <div className="dm-grocery-card-feed">
+                      {priceGroups.map((group) => (
+                        <article key={`${group.name}-${group.unit}`} className="dm-grocery-group-card">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800 }}>{group.name}</h3>
+                              <span style={{ fontSize: '0.8125rem', color: 'var(--dm-color-text-soft)' }}>
+                                Unit: {group.unit} · {group.items.length} store {group.items.length === 1 ? 'quote' : 'quotes'}
+                              </span>
+                            </div>
+                            <Badge variant="primary" size="md">
+                              From {formatINR(group.lowestPrice)}
+                            </Badge>
+                          </div>
+
+                          <table className="dm-grocery-store-table">
+                            <thead>
+                              <tr>
+                                <th>Store</th>
+                                <th>Location</th>
+                                <th>Price</th>
+                                <th>Value</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {group.items.map((item) => {
+                                const isCheapest = Number(item.price) === group.lowestPrice
+                                return (
+                                  <tr key={item.id} style={isCheapest ? { backgroundColor: 'var(--dm-color-primary-soft, rgba(31, 143, 116, 0.08))' } : {}}>
+                                    <td>
+                                      <strong>{item.store}</strong>
+                                    </td>
+                                    <td>{item.location || '—'}</td>
+                                    <td>
+                                      <strong style={{ color: isCheapest ? 'var(--dm-color-primary-deep)' : 'inherit' }}>
+                                        {formatINR(item.price)}
+                                      </strong>
+                                    </td>
+                                    <td>
+                                      {isCheapest && (
+                                        <span title="Best price" style={{ fontWeight: 700, color: 'var(--dm-color-primary-deep)' }}>
+                                          🏷️ Best price
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </article>
+                      ))}
+                    </div>
+
+                    {/* Server-Driven Pagination for Grocery Search */}
+                    <Pagination
+                      page={page}
+                      totalPages={totalPages}
+                      totalElements={totalElements}
+                      pageSize={pageSize}
+                      onPageChange={setPage}
+                      onPageSizeChange={setPageSize}
+                      disabled={isLoading}
+                    />
+                  </>
+                  )}
                 </div>
+              ) : (
+                <div>
+                  {myItems.length === 0 ? (
+                    <div className="dm-empty-dashboard-box">
+                      <h3>No personal submissions yet</h3>
+                      <p>Submit grocery prices to track prices and help neighbors discover deals.</p>
+                    </div>
+                  ) : (
+                    <>
+                    <div className="dm-grocery-card-feed">
+                      {myItems.map((item) => (
+                        <article key={item.id} className="dm-grocery-group-card">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800 }}>{item.name}</h3>
+                              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: 'var(--dm-color-text-soft)' }}>
+                                🏪 {item.store} · 📍 {item.location}
+                              </p>
+                              <span style={{ fontSize: '0.8125rem', color: 'var(--dm-color-text-soft)' }}>
+                                per {item.unit}
+                              </span>
+                            </div>
+                            <strong style={{ fontSize: '1.25rem', color: 'var(--dm-color-primary-deep)' }}>
+                              {formatINR(item.price)}
+                            </strong>
+                          </div>
 
-                <Input label="Store name" name="store" value={form.store} onChange={handleChange} required />
-                <Input label="Price (₹)" type="number" step="0.01" min="0.01" name="price" value={form.price} onChange={handleChange} required />
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem', borderTop: '1px solid var(--dm-color-border)', paddingTop: '0.5rem' }}>
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>
+                              Edit
+                            </Button>
+                            <Button variant="danger" size="sm" onClick={() => deleteMutation.mutate(item.id)}>
+                              Delete
+                            </Button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
 
-                <div className="form-group">
-                  <label htmlFor="unit-select">Unit / Quantity</label>
-                  <select id="unit-select" name="unit" value={form.unit} onChange={handleChange} className="form-input">
-                    {UNIT_OPTIONS.map((u) => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
+                    {/* Server-Driven Pagination for My Submissions */}
+                    <Pagination
+                      page={page}
+                      totalPages={totalMyPages}
+                      totalElements={totalMyElements}
+                      pageSize={pageSize}
+                      onPageChange={setPage}
+                      onPageSizeChange={setPageSize}
+                    />
+                  </>
+                  )}
                 </div>
-
-                <Input label="Location / Area" name="location" value={form.location} onChange={handleChange} required />
-
-                {formError && <p className="form-error" role="alert">{formError}</p>}
-
-                <div className="profile-actions">
-                  <Button type="submit" disabled={saveMutation.isPending}>{saveMutation.isPending ? 'Saving…' : editingId ? 'Update price' : 'Submit price'}</Button>
-                  {editingId && <Button variant="ghost" onClick={handleCancelEdit}>Cancel</Button>}
-                </div>
-              </form>
+              )}
             </div>
-          )}
-        </aside>
-      </section>
+
+            {/* Right Column: Sticky Submission Form */}
+            <div>
+              <div className="dm-provider-side-card">
+                <div>
+                  <span className="dm-section-eyebrow">
+                    {editingId ? 'Edit Price' : 'Submit Grocery Price'}
+                  </span>
+                  <h3 style={{ margin: '0.25rem 0', fontSize: '1.125rem' }}>
+                    {editingId ? 'Update Price Entry' : 'Add Store Price'}
+                  </h3>
+                  <p style={{ color: 'var(--dm-color-text-soft)', fontSize: '0.8125rem', margin: 0 }}>
+                    Log local rates for rice, oil, milk, lentils, vegetables, or household essentials.
+                  </p>
+                </div>
+
+                {formError && (
+                  <div className="dm-form-alert dm-form-alert--error" role="alert">
+                    <span>⚠️ {formError}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="dm-provider-modal-form">
+                  <Input
+                    id="g-name"
+                    name="name"
+                    label="Product name"
+                    placeholder="e.g. Amul Taaza Milk, Toor Dal"
+                    value={form.name}
+                    onChange={handleChange}
+                    required
+                  />
+
+                  <div className="dm-select-group">
+                    <label htmlFor="g-cat" className="dm-input-label">
+                      Category
+                    </label>
+                    <select
+                      id="g-cat"
+                      name="category"
+                      className="dm-select"
+                      value={form.category}
+                      onChange={handleChange}
+                    >
+                      {CATEGORIES.filter((c) => c !== 'ALL').map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <Input
+                    id="g-store"
+                    name="store"
+                    label="Store name"
+                    placeholder="e.g. D-Mart, Local Kirana, Fresh Mart"
+                    value={form.store}
+                    onChange={handleChange}
+                    required
+                  />
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <Input
+                      id="g-price"
+                      name="price"
+                      label="Price (₹)"
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g. 66.00"
+                      value={form.price}
+                      onChange={handleChange}
+                      required
+                    />
+
+                    <div className="dm-select-group">
+                      <label htmlFor="g-unit" className="dm-input-label">
+                        Unit
+                      </label>
+                      <select
+                        id="g-unit"
+                        name="unit"
+                        className="dm-select"
+                        value={form.unit}
+                        onChange={handleChange}
+                      >
+                        {UNIT_OPTIONS.map((u) => (
+                          <option key={u} value={u}>
+                            {u}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <Input
+                    id="g-loc"
+                    name="location"
+                    label="Location / Area"
+                    placeholder="e.g. Kothrud, Pune / MG Road"
+                    value={form.location}
+                    onChange={handleChange}
+                    required
+                  />
+
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    {editingId && (
+                      <Button type="button" variant="ghost" fullWidth onClick={handleCancelEdit}>
+                        Cancel
+                      </Button>
+                    )}
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      fullWidth
+                      isLoading={saveMutation.isPending}
+                    >
+                      {editingId ? 'Update price' : 'Submit price'}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </ResponsiveContainer>
+      </div>
     </MainLayout>
   )
 }

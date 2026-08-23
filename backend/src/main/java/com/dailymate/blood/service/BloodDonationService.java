@@ -12,9 +12,14 @@ import com.dailymate.blood.entity.BloodUrgency;
 import com.dailymate.blood.entity.DonationCenter;
 import com.dailymate.blood.repository.BloodRequestRepository;
 import com.dailymate.blood.repository.DonationCenterRepository;
+import com.dailymate.core.dto.response.PageResponse;
 import com.dailymate.core.exception.BadRequestException;
 import com.dailymate.core.exception.NotFoundException;
+import com.dailymate.core.util.PaginationUtils;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +35,14 @@ public class BloodDonationService {
     }
 
     // --- Donation Centers ---
+
+    public PageResponse<DonationCenterResponse> getCenters(int page, int size) {
+        Sort sort = Sort.by(Sort.Order.asc("name"), Sort.Order.asc("id"));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sort);
+        Page<DonationCenterResponse> responsePage = centers.findAll(pageable)
+                .map(this::toCenterResponse);
+        return PageResponse.from(responsePage);
+    }
 
     public List<DonationCenterResponse> getCenters() {
         return centers.findAll().stream()
@@ -58,6 +71,17 @@ public class BloodDonationService {
 
     // --- Blood Requests ---
 
+    public PageResponse<BloodRequestResponse> getRequests(String bloodGroup, String status, int page, int size) {
+        String normalizedGroup = (bloodGroup != null && !bloodGroup.trim().isEmpty() && !bloodGroup.equalsIgnoreCase("all")) ? bloodGroup.trim().toUpperCase() : null;
+        String normalizedStatus = (status != null && !status.trim().isEmpty() && !status.equalsIgnoreCase("all")) ? status.trim().toUpperCase() : null;
+
+        Sort sort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sort);
+        Page<BloodRequestResponse> responsePage = bloodRequests.findFiltered(normalizedGroup, normalizedStatus, pageable)
+                .map(this::toRequestResponse);
+        return PageResponse.from(responsePage);
+    }
+
     public List<BloodRequestResponse> getRequests(String bloodGroup, String status) {
         String normalizedGroup = (bloodGroup != null && !bloodGroup.trim().isEmpty()) ? bloodGroup.trim().toUpperCase() : null;
         String normalizedStatus = (status != null && !status.trim().isEmpty()) ? status.trim().toUpperCase() : null;
@@ -74,6 +98,14 @@ public class BloodDonationService {
         }
 
         return result.stream().map(this::toRequestResponse).toList();
+    }
+
+    public PageResponse<BloodRequestResponse> getMyRequests(String userId, int page, int size) {
+        Sort sort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sort);
+        Page<BloodRequestResponse> responsePage = bloodRequests.findByUserId(userId, pageable)
+                .map(this::toRequestResponse);
+        return PageResponse.from(responsePage);
     }
 
     public List<BloodRequestResponse> getMyRequests(String userId) {

@@ -91,7 +91,7 @@ describe('MedicinePage', () => {
       active: true,
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderMedicinePage()
 
     await waitFor(() => {
@@ -137,7 +137,7 @@ describe('MedicinePage', () => {
       active: true,
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderMedicinePage()
 
     await waitFor(() => {
@@ -190,7 +190,7 @@ describe('MedicinePage', () => {
       active: false,
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderMedicinePage()
 
     await waitFor(() => {
@@ -226,7 +226,7 @@ describe('MedicinePage', () => {
     ])
     deleteReminderMock.mockResolvedValue({})
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderMedicinePage()
 
     await waitFor(() => {

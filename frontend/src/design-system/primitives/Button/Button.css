@@ -1,0 +1,129 @@
+.dm-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-weight: 600;
+  border-radius: var(--dm-radius-sm, 8px);
+  border: 1px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--dm-transition-fast), border-color var(--dm-transition-fast), color var(--dm-transition-fast), box-shadow var(--dm-transition-fast);
+  outline: none;
+  text-decoration: none;
+  white-space: nowrap;
+  gap: var(--dm-space-2, 0.5rem);
+  min-height: 44px; /* WCAG 44px touch target standard */
+}
+
+/* Sizing */
+.dm-button--sm {
+  font-size: 0.8125rem;
+  padding: 0.35rem 0.75rem;
+  min-height: 36px;
+  border-radius: var(--dm-radius-xs, 4px);
+}
+
+.dm-button--md {
+  font-size: 0.875rem;
+  padding: 0.55rem 1.15rem;
+  min-height: 44px;
+}
+
+.dm-button--lg {
+  font-size: 1rem;
+  padding: 0.75rem 1.5rem;
+  min-height: 50px;
+  border-radius: var(--dm-radius-md, 12px);
+}
+
+.dm-button--full-width {
+  width: 100%;
+}
+
+/* Focus Visible (WCAG AA) */
+.dm-button:focus-visible {
+  box-shadow: var(--dm-shadow-focus);
+}
+
+/* Primary Variant */
+.dm-button--primary {
+  background-color: var(--dm-color-primary);
+  color: var(--dm-color-text-inverse, #ffffff);
+}
+.dm-button--primary:hover:not(:disabled) {
+  background-color: var(--dm-color-primary-hover);
+}
+.dm-button--primary:active:not(:disabled) {
+  background-color: var(--dm-color-primary-deep);
+}
+
+/* Secondary Variant */
+.dm-button--secondary {
+  background-color: var(--dm-color-secondary);
+  color: var(--dm-color-primary-deep);
+}
+.dm-button--secondary:hover:not(:disabled) {
+  background-color: var(--dm-color-border-hover);
+}
+
+/* Outline Variant */
+.dm-button--outline {
+  background-color: transparent;
+  border-color: var(--dm-color-border);
+  color: var(--dm-color-text);
+}
+.dm-button--outline:hover:not(:disabled) {
+  background-color: var(--dm-color-surface-hover);
+  border-color: var(--dm-color-border-hover);
+}
+
+/* Ghost Variant */
+.dm-button--ghost {
+  background-color: transparent;
+  color: var(--dm-color-text-soft);
+}
+.dm-button--ghost:hover:not(:disabled) {
+  background-color: var(--dm-color-surface-hover);
+  color: var(--dm-color-text);
+}
+
+/* Danger Variant */
+.dm-button--danger {
+  background-color: var(--dm-color-danger);
+  color: #ffffff;
+}
+.dm-button--danger:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+/* Success Variant */
+.dm-button--success {
+  background-color: var(--dm-color-success);
+  color: #ffffff;
+}
+.dm-button--success:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+/* Disabled & Loading */
+.dm-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.dm-button__spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: dm-spin 0.6s linear infinite;
+}
+
+@keyframes dm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

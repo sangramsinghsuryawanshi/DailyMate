@@ -1,11 +1,16 @@
 package com.dailymate.grocery.service;
 
+import com.dailymate.core.dto.response.PageResponse;
 import com.dailymate.core.exception.NotFoundException;
+import com.dailymate.core.util.PaginationUtils;
 import com.dailymate.grocery.dto.request.GroceryItemRequest;
 import com.dailymate.grocery.dto.response.GroceryItemResponse;
 import com.dailymate.grocery.entity.GroceryItem;
 import com.dailymate.grocery.repository.GroceryItemRepository;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +21,22 @@ public class GroceryComparisonService {
 
     public GroceryComparisonService(GroceryItemRepository groceryItems) {
         this.groceryItems = groceryItems;
+    }
+
+    public PageResponse<GroceryItemResponse> getItems(String search, String category, String store, int page, int size) {
+        String normalizedSearch = (search != null && !search.trim().isEmpty()) ? search.trim().toLowerCase() : null;
+        String normalizedCategory = (category != null && !category.trim().isEmpty() && !category.equalsIgnoreCase("ALL"))
+                ? category.trim().toLowerCase()
+                : null;
+        String normalizedStore = (store != null && !store.trim().isEmpty() && !store.equalsIgnoreCase("ALL"))
+                ? store.trim().toLowerCase()
+                : null;
+
+        Sort sort = Sort.by(Sort.Order.asc("price"), Sort.Order.asc("id"));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sort);
+        Page<GroceryItemResponse> responsePage = groceryItems.findFiltered(normalizedSearch, normalizedCategory, normalizedStore, pageable)
+                .map(this::toResponse);
+        return PageResponse.from(responsePage);
     }
 
     public List<GroceryItemResponse> getItems(String search, String category, String store) {
@@ -35,6 +56,14 @@ public class GroceryComparisonService {
                 .filter(item -> normalizedStore == null || item.getStore().toLowerCase().equals(normalizedStore))
                 .map(this::toResponse)
                 .toList();
+    }
+
+    public PageResponse<GroceryItemResponse> getMyItems(String userId, int page, int size) {
+        Sort sort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sort);
+        Page<GroceryItemResponse> responsePage = groceryItems.findByUserId(userId, pageable)
+                .map(this::toResponse);
+        return PageResponse.from(responsePage);
     }
 
     public List<GroceryItemResponse> getMyItems(String userId) {
@@ -64,6 +93,7 @@ public class GroceryComparisonService {
     public void deleteItem(String userId, String itemId) {
         GroceryItem item = groceryItems.findByIdAndUserId(itemId, userId)
                 .orElseThrow(() -> new NotFoundException("Grocery item not found"));
+
         groceryItems.delete(item);
     }
 
@@ -73,7 +103,7 @@ public class GroceryComparisonService {
         item.setStore(request.store().trim());
         item.setPrice(request.price());
         item.setUnit(request.unit().trim());
-        item.setLocation(request.location().trim());
+        item.setLocation(request.location() != null ? request.location().trim() : null);
     }
 
     private GroceryItemResponse toResponse(GroceryItem item) {

@@ -1,0 +1,111 @@
+.dm-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.dm-input-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--dm-color-text);
+  user-select: none;
+}
+
+.dm-input-required {
+  color: var(--dm-color-danger);
+  margin-left: 2px;
+}
+
+.dm-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.dm-input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  padding: 0.65rem 0.9rem;
+  min-height: 44px;
+  background-color: var(--dm-color-surface);
+  color: var(--dm-color-text);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-sm, 8px);
+  transition: border-color var(--dm-transition-fast), box-shadow var(--dm-transition-fast), background-color var(--dm-transition-fast);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.dm-input::placeholder {
+  color: var(--dm-color-text-soft);
+  opacity: 0.8;
+}
+
+.dm-input:hover:not(:disabled) {
+  border-color: var(--dm-color-border-hover);
+}
+
+.dm-input:focus {
+  border-color: var(--dm-color-primary);
+  box-shadow: var(--dm-shadow-focus);
+}
+
+.dm-input--has-icon-left {
+  padding-left: 2.5rem;
+}
+
+.dm-input--has-icon-right {
+  padding-right: 2.5rem;
+}
+
+.dm-input-icon {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dm-color-text-soft);
+  pointer-events: none;
+  font-size: 1.1rem;
+}
+
+.dm-input-icon--left {
+  left: 0.85rem;
+}
+
+.dm-input-icon--right {
+  right: 0.85rem;
+}
+
+/* Error State */
+.dm-input-group--error .dm-input {
+  border-color: var(--dm-color-danger);
+}
+.dm-input-group--error .dm-input:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25);
+}
+
+/* Disabled State */
+.dm-input-group--disabled .dm-input {
+  background-color: var(--dm-color-surface-soft);
+  color: var(--dm-color-text-soft);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.dm-input-message {
+  font-size: 0.775rem;
+  margin: 0.15rem 0 0 0;
+  line-height: 1.35;
+}
+
+.dm-input-message--error {
+  color: var(--dm-color-danger);
+  font-weight: 500;
+}
+
+.dm-input-message--helper {
+  color: var(--dm-color-text-soft);
+}

@@ -6,93 +6,111 @@ import com.dailymate.assistant.dto.AssistantContext.EventContext;
 import com.dailymate.assistant.dto.AssistantContext.ExpenseContext;
 import com.dailymate.assistant.dto.AssistantContext.JobContext;
 import com.dailymate.assistant.dto.AssistantContext.ReminderContext;
-import com.dailymate.emergency.entity.EmergencyContact;
-import com.dailymate.emergency.repository.EmergencyContactRepository;
-import com.dailymate.events.entity.LocalEvent;
-import com.dailymate.events.repository.LocalEventRepository;
-import com.dailymate.expense.entity.ExpenseEntry;
-import com.dailymate.expense.repository.ExpenseEntryRepository;
-import com.dailymate.jobs.entity.JobPost;
-import com.dailymate.jobs.entity.JobStatus;
-import com.dailymate.jobs.repository.JobPostRepository;
-import com.dailymate.medicine.entity.MedicineReminder;
-import com.dailymate.medicine.repository.MedicineReminderRepository;
+import com.dailymate.emergency.dto.response.EmergencyContactResponse;
+import com.dailymate.emergency.service.EmergencyContactService;
+import com.dailymate.events.dto.response.LocalEventResponse;
+import com.dailymate.events.service.LocalEventService;
+import com.dailymate.expense.dto.response.ExpenseEntryResponse;
+import com.dailymate.expense.service.ExpenseService;
+import com.dailymate.jobs.dto.response.JobPostResponse;
+import com.dailymate.jobs.service.JobPostService;
+import com.dailymate.medicine.dto.response.MedicineReminderResponse;
+import com.dailymate.medicine.service.MedicineReminderService;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 
+/**
+ * Aggregates read context for the AI Assistant strictly through authorized domain services.
+ * Invariant: Zero direct repository or persistence layer dependencies.
+ */
 @Service
 public class AssistantContextService {
 
-    private final MedicineReminderRepository medicines;
-    private final ExpenseEntryRepository expenses;
-    private final EmergencyContactRepository emergencyContacts;
-    private final LocalEventRepository events;
-    private final JobPostRepository jobs;
+    private final MedicineReminderService medicineService;
+    private final ExpenseService expenseService;
+    private final EmergencyContactService emergencyContactService;
+    private final LocalEventService eventService;
+    private final JobPostService jobService;
 
     public AssistantContextService(
-            MedicineReminderRepository medicines,
-            ExpenseEntryRepository expenses,
-            EmergencyContactRepository emergencyContacts,
-            LocalEventRepository events,
-            JobPostRepository jobs) {
-        this.medicines = medicines;
-        this.expenses = expenses;
-        this.emergencyContacts = emergencyContacts;
-        this.events = events;
-        this.jobs = jobs;
+            MedicineReminderService medicineService,
+            ExpenseService expenseService,
+            EmergencyContactService emergencyContactService,
+            LocalEventService eventService,
+            JobPostService jobService) {
+        this.medicineService = medicineService;
+        this.expenseService = expenseService;
+        this.emergencyContactService = emergencyContactService;
+        this.eventService = eventService;
+        this.jobService = jobService;
     }
 
     public AssistantContext buildContext(String userId) {
-        // 1. Private User Medicine Reminders
-        List<ReminderContext> reminderList = medicines.findByUserIdOrderByRemindAtAsc(userId).stream()
-                .filter(MedicineReminder::isActive)
+        // 1. Private User Medicine Reminders (via MedicineReminderService)
+        List<ReminderContext> reminderList = medicineService.getReminders(userId).stream()
+                .filter(MedicineReminderResponse::active)
                 .map(m -> new ReminderContext(
-                        m.getName(),
-                        m.getDosage(),
-                        m.getRemindAt() != null ? m.getRemindAt().toString() : "Anytime",
-                        m.getFrequency()))
+                        m.name(),
+                        m.dosage(),
+                        m.remindAt() != null ? m.remindAt().toString() : "Anytime",
+                        m.frequency()))
                 .toList();
 
-        // 2. Private User Expenses
-        List<ExpenseEntry> userExpenses = expenses.findByUserIdOrderBySpentOnDesc(userId);
-        BigDecimal totalExpenses = BigDecimal.ZERO;
-        Map<String, BigDecimal> categoryMap = new HashMap<>();
-        for (ExpenseEntry entry : userExpenses) {
-            BigDecimal amt = entry.getAmount() != null ? entry.getAmount() : BigDecimal.ZERO;
-            totalExpenses = totalExpenses.add(amt);
-            categoryMap.merge(entry.getCategory(), amt, BigDecimal::add);
+        // 2. Private User Expenses (via ExpenseService)
+        List<ExpenseEntryResponse> userExpenses = expenseService.getEntries(userId);
+        BigDecimal totalSpent = BigDecimal.ZERO;
+        Map<String, BigDecimal> breakdown = new HashMap<>();
+
+        for (ExpenseEntryResponse entry : userExpenses) {
+            BigDecimal amt = entry.amount() != null ? entry.amount() : BigDecimal.ZERO;
+            totalSpent = totalSpent.add(amt);
+            String cat = entry.category() != null ? entry.category() : "Other";
+            breakdown.put(cat, breakdown.getOrDefault(cat, BigDecimal.ZERO).add(amt));
         }
-        ExpenseContext expenseContext = new ExpenseContext(totalExpenses, categoryMap, userExpenses.size());
 
-        // 3. Public Community Events
-        List<EventContext> eventList = events.findAllByStatusOrderByEventDateAsc("PUBLISHED").stream()
-                .map(e -> new EventContext(
-                        e.getTitle(),
-                        e.getCategory(),
-                        e.getLocation(),
-                        e.getEventDate() != null ? e.getEventDate().toString() : "TBD"))
+        ExpenseContext expenseContext = new ExpenseContext(totalSpent, breakdown, userExpenses.size());
+
+        // 3. Upcoming Community Events (via LocalEventService)
+        List<LocalEventResponse> upcomingEvents = eventService.getEvents(null, "OPEN");
+        List<EventContext> eventList = upcomingEvents.stream()
+                .limit(5)
+                .map(ev -> new EventContext(
+                        ev.title(),
+                        ev.category(),
+                        ev.location(),
+                        ev.eventDate() != null ? ev.eventDate().toString() : ""))
                 .toList();
 
-        // 4. Public Open Jobs
-        List<JobContext> jobList = jobs.findAllByStatusOrderByCreatedAtDesc(JobStatus.OPEN).stream()
+        // 4. Open Community Job Posts (via JobPostService)
+        List<JobPostResponse> openJobs = jobService.getJobPosts(null, null, null, "OPEN");
+        List<JobContext> jobList = openJobs.stream()
+                .limit(5)
                 .map(j -> new JobContext(
-                        j.getTitle(),
-                        j.getType(),
-                        j.getLocation(),
-                        j.getSalary(),
-                        j.getCompanyName()))
+                        j.title(),
+                        j.type(),
+                        j.location(),
+                        j.salary(),
+                        j.companyName()))
                 .toList();
 
-        // 5. Emergency Hotlines & Personal Contacts
-        List<String> hotlines = emergencyContacts.findAllByUserIdIsNullOrderByCreatedAtDesc().stream()
-                .map(c -> c.getName() + " (" + c.getCategory() + "): " + c.getPhone())
+        // 5. Emergency Directory (via EmergencyContactService)
+        List<EmergencyContactResponse> publicHotlines = emergencyContactService.getPublicContacts(null);
+        List<String> hotlineStrings = publicHotlines.stream()
+                .limit(4)
+                .map(h -> h.name() + ": " + h.phone())
                 .toList();
-        int personalCount = emergencyContacts.findAllByUserIdOrderByCreatedAtDesc(userId).size();
-        EmergencyContext emergencyContext = new EmergencyContext(hotlines, personalCount);
+        List<EmergencyContactResponse> personalContacts = emergencyContactService.getMyContacts(userId, null);
+        EmergencyContext emergencyContext = new EmergencyContext(hotlineStrings, personalContacts.size());
 
-        return new AssistantContext(reminderList, expenseContext, eventList, jobList, emergencyContext);
+        return new AssistantContext(
+                reminderList,
+                expenseContext,
+                eventList,
+                jobList,
+                emergencyContext
+        );
     }
 }

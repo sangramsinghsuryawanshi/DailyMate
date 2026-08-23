@@ -1,10 +1,26 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import MainLayout from '../../layouts/MainLayout'
 import { formatINR } from '../../utils/formatters'
 import { useAuth } from '../../hooks/useAuth'
 import { getProviders, createProvider } from '../services/marketplaceApi'
+import { trackEvent, AnalyticsEvents } from '../../analytics/tracker'
+import {
+  Button,
+  Input,
+  Select,
+  Card,
+  StatCard,
+  Badge,
+  TrustBadge,
+  Skeleton,
+  Pagination,
+  EmptyState,
+  ResponsiveContainer,
+} from '../../design-system'
+import { usePagination } from '../../hooks/usePagination'
+import './MarketplacePage.css'
 
 const categoryOptions = ['All', 'Electrician', 'Plumber', 'Mechanic', 'Tutor', 'Carpenter', 'Cleaner', 'Painter']
 const sortOptions = ['Name (A-Z)', 'Category', 'Price (Low to High)', 'Price (High to Low)']
@@ -12,17 +28,35 @@ const sortOptions = ['Name (A-Z)', 'Category', 'Price (Low to High)', 'Price (Hi
 export default function MarketplacePage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-
-  const { data: providers = [], isLoading, isError } = useQuery({
-    queryKey: ['marketplace-providers'],
-    queryFn: getProviders,
-  })
-
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
   const [sortBy, setSortBy] = useState('Name (A-Z)')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [formError, setFormError] = useState('')
+
+  const { page, pageSize, setPage, setPageSize, resetPage } = usePagination({
+    initialPage: 0,
+    initialPageSize: 20,
+    syncWithUrl: true,
+  })
+
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.PAGE_VIEW, { page: 'marketplace' })
+  }, [])
+
+  const { data: pageData = { content: [], totalElements: 0, totalPages: 0 }, isLoading, isError, refetch } = useQuery({
+    queryKey: ['marketplace-providers', { page, pageSize, query, category }],
+    queryFn: () => getProviders({ page, size: pageSize, search: query || undefined, category: category !== 'All' ? category : undefined }),
+    placeholderData: (previousData) => previousData,
+  })
+
+  const providers = useMemo(() => {
+    if (Array.isArray(pageData)) return pageData
+    return pageData.content ?? []
+  }, [pageData])
+
+  const totalElements = Array.isArray(pageData) ? pageData.length : (pageData.totalElements ?? providers.length)
+  const totalPages = Array.isArray(pageData) ? 1 : (pageData.totalPages ?? 1)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -49,6 +83,7 @@ export default function MarketplacePage() {
         email: '',
         hourlyRate: '',
       })
+      trackEvent('provider_created')
     },
     onError: (err) => {
       setFormError(err.response?.data?.detail || err.response?.data?.message || 'Failed to create provider listing.')
@@ -100,285 +135,323 @@ export default function MarketplacePage() {
     })
   }, [category, providers, query, sortBy])
 
-  if (isLoading) {
-    return (
-      <MainLayout>
-        <main className="page-state"><h1>Loading marketplace…</h1></main>
-      </MainLayout>
-    )
-  }
-
-  if (isError) {
-    return (
-      <MainLayout>
-        <main className="page-state">
-          <h1>Marketplace unavailable</h1>
-          <Link to="/dashboard" className="btn btn-primary">Back to dashboard</Link>
-        </main>
-      </MainLayout>
-    )
-  }
+  // Statistics calculation
+  const totalVerified = useMemo(() => providers.length, [providers])
+  const categoriesCount = useMemo(() => new Set(providers.map((p) => p.category)).size, [providers])
 
   return (
     <MainLayout>
-      <section className="page-cover">
-        <div>
-          <p className="eyebrow">Local services</p>
-          <h1>Find trusted help nearby</h1>
-        </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          {user ? (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => setShowCreateModal(true)}
-            >
-              + List your service
-            </button>
-          ) : (
-            <Link to="/login" className="btn btn-secondary">
-              Sign in to list service
-            </Link>
-          )}
-          <Link to="/dashboard" className="btn btn-secondary">Back to dashboard</Link>
-        </div>
-      </section>
-
-      {showCreateModal && (
-        <div className="panel" style={{ marginBottom: '1.5rem', border: '2px solid var(--color-primary, #3b82f6)' }}>
-          <div className="panel-header">
-            <h2>Create service provider profile</h2>
-            <button
-              type="button"
-              className="btn btn-small btn-secondary"
-              onClick={() => { setShowCreateModal(false); setFormError('') }}
-            >
-              Cancel
-            </button>
+      <div className="dm-marketplace-page">
+        <ResponsiveContainer size="wide">
+          {/* ===================================================================
+              1. PAGE HEADER
+             =================================================================== */}
+          <div className="dm-page-header-row">
+            <div>
+              <span className="dm-section-eyebrow">Local Services & Trade</span>
+              <h1 className="dm-page-main-title">Marketplace</h1>
+              <p className="dm-page-subtitle">
+                Discover trusted local electricians, plumbers, tutors, and verified home service providers.
+              </p>
+            </div>
+            <div className="dm-page-header-actions">
+              {user ? (
+                <Button
+                  variant="primary"
+                  size="md"
+                  iconLeft="+"
+                  onClick={() => setShowCreateModal(true)}
+                >
+                  + List your service
+                </Button>
+              ) : (
+                <Link to="/login">
+                  <Button variant="primary" size="md">
+                    Sign in to list service
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
 
-          {formError && (
-            <div style={{ color: '#ef4444', marginBottom: '1rem', padding: '0.5rem', background: '#fee2e2', borderRadius: '4px' }}>
-              {formError}
-            </div>
-          )}
+          {/* Key Metrics Grid */}
+          <div className="dm-marketplace-stats-grid">
+            <StatCard
+              domain="marketplace"
+              label="Active Providers"
+              value={String(totalVerified)}
+              trend="Verified"
+              trendDirection="up"
+              trendLabel="Direct contact"
+              icon="🛠️"
+            />
+            <StatCard
+              domain="marketplace"
+              label="Trade Categories"
+              value={String(categoriesCount || 8)}
+              trend="Available"
+              trendDirection="neutral"
+              trendLabel="Home & Technical"
+              icon="⚡"
+            />
+            <StatCard
+              domain="marketplace"
+              label="Average Response"
+              value="< 15 Mins"
+              trend="High speed"
+              trendDirection="up"
+              trendLabel="Direct phone/email"
+              icon="📞"
+            />
+            <StatCard
+              domain="marketplace"
+              label="Zero Commission"
+              value="100% Direct"
+              trend="No middleman"
+              trendDirection="up"
+              trendLabel="Direct resident pricing"
+              icon="🤝"
+            />
+          </div>
 
-          <form onSubmit={handleCreateSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-            <label className="field">
-              <span>Business / Provider Name *</span>
+          {/* ===================================================================
+              2. SEARCH & FILTER TOOLBAR
+             =================================================================== */}
+          <div className="dm-marketplace-toolbar">
+            <div className="dm-marketplace-search-row">
               <input
-                type="text"
-                required
-                maxLength={80}
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g. Apex Electrical Services"
+                type="search"
+                className="dm-marketplace-search-input"
+                placeholder="Search for a plumber, electrician, tutor, mechanic, or location…"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  trackEvent('search_started', { query: e.target.value })
+                }}
               />
-            </label>
-
-            <label className="field">
-              <span>Category *</span>
               <select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                className="dm-marketplace-sort-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                aria-label="Sort providers"
               >
-                {categoryOptions.filter((c) => c !== 'All').map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
+                {sortOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
                 ))}
               </select>
-            </label>
-
-            <label className="field">
-              <span>Service Area *</span>
-              <input
-                type="text"
-                required
-                maxLength={120}
-                value={formData.serviceArea}
-                onChange={(e) => setFormData({ ...formData, serviceArea: e.target.value })}
-                placeholder="e.g. Downtown & Metro Area"
-              />
-            </label>
-
-            <label className="field">
-              <span>Hourly Rate ($)</span>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.hourlyRate}
-                onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
-                placeholder="e.g. 65.00"
-              />
-            </label>
-
-            <label className="field">
-              <span>Phone</span>
-              <input
-                type="tel"
-                maxLength={20}
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="+1-555-0199"
-              />
-            </label>
-
-            <label className="field">
-              <span>Email</span>
-              <input
-                type="email"
-                maxLength={120}
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="contact@business.example"
-              />
-            </label>
-
-            <label className="field" style={{ gridColumn: '1 / -1' }}>
-              <span>Description *</span>
-              <textarea
-                required
-                rows={3}
-                maxLength={500}
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Describe your services, skills, and specialties..."
-              />
-            </label>
-
-            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => { setShowCreateModal(false); setFormError('') }}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={createMutation.isPending}
-              >
-                {createMutation.isPending ? 'Publishing…' : 'Publish Listing'}
-              </button>
             </div>
-          </form>
-        </div>
-      )}
 
-      <section className="marketplace-toolbar panel">
-        <label className="search-box search-wide">
-          <span>What do you need help with?</span>
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by provider name, category, area, or description..."
-          />
-        </label>
-
-        <div className="marketplace-controls">
-          <div className="pill-row" aria-label="Service categories">
-            {categoryOptions.map((item) => (
-              <button
-                key={item}
-                type="button"
-                className={`pill ${category === item ? 'active' : ''}`}
-                onClick={() => setCategory(item)}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-
-          <label className="field compact-field">
-            <span>Sort by</span>
-            <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
-              {sortOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </section>
-
-      <section className="marketplace-layout">
-        <div className="panel panel-large">
-          <div className="panel-header">
-            <h2>Available near you</h2>
-            <span>{visibleProviders.length} providers</span>
-          </div>
-
-          {visibleProviders.length === 0 ? (
-            <div className="empty-state">
-              <h3>No providers match your search.</h3>
-              <p>Try a different keyword or reset the category filter to browse nearby services.</p>
-              <button type="button" className="btn btn-primary" onClick={() => { setQuery(''); setCategory('All') }}>
-                Reset filters
-              </button>
-            </div>
-          ) : (
-            <div className="provider-list">
-              {visibleProviders.map((provider) => (
-                <article key={provider.id} className="provider-card">
-                  <div className="provider-avatar">{provider.name.slice(0, 1)}</div>
-
-                  <div className="provider-copy">
-                    <div className="provider-row">
-                      <h3>{provider.name}</h3>
-                      <span className="badge">{provider.category}</span>
-                    </div>
-                    <p className="muted">Area: {provider.serviceArea}</p>
-                    <p className="provider-description">{provider.description}</p>
-                  </div>
-
-                  <div className="provider-price">
-                    <strong>
-                      {provider.hourlyRate != null
-                        ? `${formatINR(provider.hourlyRate)}/hr`
-                        : 'Contact for quote'}
-                    </strong>
-                    <Link to={`/marketplace/${provider.id}`} className="btn btn-small btn-primary">
-                      View profile
-                    </Link>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <aside className="side-stack">
-          <div className="panel">
-            <div className="panel-header">
-              <h2>Service Categories</h2>
-            </div>
-            <div className="tag-cloud">
-              {categoryOptions.filter((c) => c !== 'All').map((cat) => (
+            {/* Category Pills */}
+            <div className="dm-marketplace-category-pills" role="tablist" aria-label="Provider Categories">
+              {categoryOptions.map((cat) => (
                 <button
                   key={cat}
                   type="button"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                  className={`dm-category-filter-btn ${category === cat ? 'active' : ''}`}
                   onClick={() => setCategory(cat)}
                 >
-                  <span className={category === cat ? 'badge' : ''}>{cat}</span>
+                  {cat}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="panel">
-            <div className="panel-header">
-              <h2>About DailyMate Services</h2>
+          {/* ===================================================================
+              3. PROVIDERS DIRECTORY GRID
+             =================================================================== */}
+          {isLoading ? (
+            <div className="dm-providers-grid">
+              <Skeleton variant="card" height="220px" />
+              <Skeleton variant="card" height="220px" />
+              <Skeleton variant="card" height="220px" />
             </div>
-            <ul className="list-stack">
-              <li>Direct local provider contact</li>
-              <li>Clear upfront service areas</li>
-              <li>Transparent hourly pricing</li>
-            </ul>
+          ) : isError ? (
+            <div className="dm-error-box">
+              <p>Unable to load marketplace providers.</p>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </div>
+          ) : visibleProviders.length > 0 ? (
+            <div className="dm-providers-grid">
+              {visibleProviders.map((provider) => (
+                <div key={provider.id} className="dm-provider-card">
+                  <div>
+                    <div className="dm-provider-card-top">
+                      <div className="dm-provider-title-wrap">
+                        <h3>{provider.name}</h3>
+                        <span className="dm-provider-category-tag">{provider.category}</span>
+                      </div>
+                      {provider.hourlyRate != null && (
+                        <span className="dm-provider-rate">
+                          {formatINR(provider.hourlyRate)}/hr
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="dm-provider-description">{provider.description}</p>
+                  </div>
+
+                  <div>
+                    <div className="dm-provider-meta-row">
+                      <span>Area: {provider.serviceArea}</span>
+                    </div>
+
+                    <div className="dm-provider-card-actions">
+                      <Link to={`/marketplace/${provider.id}`} className="dm-btn-provider-profile">
+                        <Button variant="outline" size="sm" fullWidth>
+                          View Profile
+                        </Button>
+                      </Link>
+                      {provider.phone && (
+                        <a
+                          href={`tel:${provider.phone}`}
+                          onClick={() => trackEvent('provider_contacted', { providerId: provider.id, phone: provider.phone })}
+                        >
+                          <Button variant="secondary" size="sm" iconLeft="📞">
+                            Call
+                          </Button>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="dm-empty-dashboard-box">
+              <p>No service providers found matching "{query || category}".</p>
+              <small>Try selecting a different category or clearing search filters.</small>
+            </div>
+          )}
+
+          {/* Server-Driven Pagination */}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalElements={totalElements}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            disabled={isLoading}
+          />
+        </ResponsiveContainer>
+      </div>
+
+      {/* ===================================================================
+          LISTING MODAL
+         =================================================================== */}
+      {showCreateModal && (
+        <div className="dm-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="dm-modal dm-modal--md">
+            <div className="dm-modal__header">
+              <h2 className="dm-modal__title">Create service provider profile</h2>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="dm-modal__close"
+                aria-label="Close dialog"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="dm-modal__body">
+              {formError && (
+                <div className="dm-form-alert dm-form-alert--error" role="alert">
+                  <span>⚠️ {formError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleCreateSubmit} className="dm-provider-modal-form">
+                <Input
+                  id="p-name"
+                  name="name"
+                  label="Business / Provider Name"
+                  required
+                  placeholder="e.g. Apex Electrical Solutions"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+
+                <div className="dm-select-group">
+                  <label htmlFor="p-category" className="dm-input-label">
+                    Category
+                  </label>
+                  <select
+                    id="p-category"
+                    name="category"
+                    className="dm-select"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  >
+                    {categoryOptions.filter((c) => c !== 'All').map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <Input
+                  id="p-area"
+                  name="serviceArea"
+                  label="Service Area"
+                  required
+                  placeholder="e.g. Kothrud, Baner, Pune West"
+                  value={formData.serviceArea}
+                  onChange={(e) => setFormData({ ...formData, serviceArea: e.target.value })}
+                />
+
+                <Input
+                  id="p-rate"
+                  name="hourlyRate"
+                  label="Hourly Rate (₹)"
+                  type="number"
+                  placeholder="e.g. 150"
+                  value={formData.hourlyRate}
+                  onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
+                />
+
+                <Input
+                  id="p-phone"
+                  name="phone"
+                  label="Contact Phone"
+                  type="tel"
+                  placeholder="+91 98220 12345"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+
+                <Input
+                  id="p-desc"
+                  name="description"
+                  label="Description / Services Offered"
+                  required
+                  placeholder="Describe your expertise, experience, and service guarantees"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                />
+
+                <div className="dm-modal-actions-row">
+                  <Button type="button" variant="ghost" onClick={() => setShowCreateModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    isLoading={createMutation.isPending}
+                  >
+                    Publish Listing
+                  </Button>
+                </div>
+              </form>
+            </div>
           </div>
-        </aside>
-      </section>
+        </div>
+      )}
     </MainLayout>
   )
 }

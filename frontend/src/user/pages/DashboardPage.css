@@ -1,0 +1,600 @@
+/* DailyMate Modern Bento Grid Dashboard Styles */
+
+.dm-dashboard {
+  padding: var(--dm-space-6, 1.5rem) 0 var(--dm-space-12, 3rem) 0;
+  color: var(--dm-color-text);
+}
+
+/* ===================================================================
+   BENTO GRID MASTER CONTAINER
+   =================================================================== */
+.dm-bento-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dm-space-6, 1.5rem);
+}
+
+/* Top Hero + AI Bento Grid (12 cols on desktop: 7 cols Hero / 5 cols AI) */
+.dm-bento-hero-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--dm-space-5, 1.25rem);
+}
+
+@media (min-width: 1024px) {
+  .dm-bento-hero-row {
+    grid-template-columns: 7fr 5fr;
+  }
+}
+
+/* ===================================================================
+   1. DAILY OVERVIEW HERO BENTO CARD
+   =================================================================== */
+.dm-bento-hero-card {
+  background-color: var(--dm-color-surface);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-bento-radius, 16px);
+  padding: var(--dm-space-6, 1.5rem) var(--dm-space-8, 2rem);
+  box-shadow: var(--dm-shadow-card);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--dm-space-4, 1rem);
+  position: relative;
+  transition: border-color var(--dm-transition-fast), box-shadow var(--dm-transition-fast);
+}
+
+.dm-bento-hero-card:hover {
+  border-color: var(--dm-color-border-hover);
+  box-shadow: var(--dm-shadow-card-hover);
+}
+
+.dm-bento-hero__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.dm-bento-hero__eyebrow-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--dm-radius-pill, 9999px);
+  background-color: var(--dm-color-primary-soft);
+  color: var(--dm-color-primary-deep);
+  border: 1px solid var(--dm-color-primary-light);
+}
+
+[data-theme="dark"] .dm-bento-hero__eyebrow-badge {
+  background-color: rgba(45, 212, 191, 0.15);
+  color: var(--dm-color-primary-light);
+  border-color: rgba(45, 212, 191, 0.3);
+}
+
+.dm-bento-hero__date {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--dm-color-text-soft);
+}
+
+.dm-bento-hero__greeting-title {
+  margin: 0;
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  font-weight: 900;
+  color: var(--dm-color-text);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.dm-bento-hero__subtitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--dm-color-text-soft);
+  line-height: 1.5;
+}
+
+/* Priority Action Chips inside Hero */
+.dm-bento-hero__alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.dm-bento-alert-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--dm-radius-md, 12px);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform var(--dm-transition-fast);
+}
+
+.dm-bento-alert-chip:hover {
+  transform: translateY(-1px);
+}
+
+.dm-bento-alert-chip--urgent {
+  background-color: var(--dm-color-danger-subtle, #fef2f2);
+  color: #b91c1c;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+[data-theme="dark"] .dm-bento-alert-chip--urgent {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.dm-bento-alert-chip--health {
+  background-color: var(--dm-color-primary-soft, #e6f6f1);
+  color: var(--dm-color-primary-deep, #0d5f4c);
+  border: 1px solid var(--dm-color-primary-light, #b2dfd4);
+}
+
+[data-theme="dark"] .dm-bento-alert-chip--health {
+  background-color: rgba(45, 212, 191, 0.15);
+  color: var(--dm-color-primary-light, #2dd4bf);
+  border-color: rgba(45, 212, 191, 0.3);
+}
+
+.dm-bento-hero__quick-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-2, 0.5rem);
+  flex-wrap: wrap;
+  padding-top: var(--dm-space-2, 0.5rem);
+  border-top: 1px solid var(--dm-color-border);
+}
+
+/* ===================================================================
+   2. INTEGRATED AI COMPANION BENTO CARD (5 cols)
+   =================================================================== */
+.dm-bento-ai-card {
+  background-color: var(--dm-color-surface);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: var(--dm-bento-radius, 16px);
+  padding: var(--dm-space-6, 1.5rem);
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.08);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--dm-space-3, 0.75rem);
+  position: relative;
+  transition: all var(--dm-transition-normal);
+}
+
+.dm-bento-ai-card:hover {
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.14);
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.dm-bento-ai__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.dm-bento-ai__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: var(--dm-domain-ai, #8b5cf6);
+}
+
+[data-theme="dark"] .dm-bento-ai__badge {
+  color: #a78bfa;
+}
+
+.dm-bento-ai__bot-sparkle {
+  font-size: 1.15rem;
+}
+
+.dm-bento-ai__prompt-preview {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--dm-color-text);
+  margin: 0;
+}
+
+.dm-bento-ai__form {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  align-items: flex-end;
+}
+
+.dm-bento-ai__input {
+  flex: 1;
+  min-height: 44px;
+  max-height: 160px;
+  padding: 0.65rem 0.85rem;
+  background-color: var(--dm-color-surface-soft);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-md, 12px);
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--dm-color-text);
+  outline: none;
+  resize: vertical;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  overflow-y: auto;
+  box-sizing: border-box;
+  transition: border-color var(--dm-transition-fast), box-shadow var(--dm-transition-fast);
+}
+
+.dm-bento-ai__input:focus {
+  border-color: var(--dm-domain-ai, #8b5cf6);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+.dm-bento-ai__form button {
+  height: 44px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dm-bento-ai__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.dm-bento-ai-chip {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--dm-radius-pill, 9999px);
+  background-color: var(--dm-color-surface-soft);
+  color: var(--dm-color-text-soft);
+  border: 1px solid var(--dm-color-border);
+  cursor: pointer;
+  transition: all var(--dm-transition-fast);
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.dm-bento-ai-chip:hover {
+  background-color: rgba(139, 92, 246, 0.1);
+  color: var(--dm-domain-ai, #8b5cf6);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+/* ===================================================================
+   3. METRIC BENTO CARDS GRID (4 cols Desktop, 2 cols Tablet)
+   =================================================================== */
+.dm-bento-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--dm-space-4, 1rem);
+}
+
+@media (min-width: 600px) {
+  .dm-bento-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dm-bento-stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ===================================================================
+   4. MAIN BENTO ROW: SCHEDULE (7 cols) + SERVICES (5 cols)
+   =================================================================== */
+.dm-bento-main-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--dm-space-5, 1.25rem);
+}
+
+@media (min-width: 1024px) {
+  .dm-bento-main-row {
+    grid-template-columns: 7fr 5fr;
+  }
+}
+
+.dm-bento-panel {
+  background-color: var(--dm-color-surface);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-bento-radius, 16px);
+  padding: var(--dm-space-6, 1.5rem);
+  box-shadow: var(--dm-shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dm-space-4, 1rem);
+  transition: border-color var(--dm-transition-fast);
+}
+
+.dm-bento-panel:hover {
+  border-color: var(--dm-color-border-hover);
+}
+
+.dm-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.dm-panel-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--dm-color-text);
+  letter-spacing: -0.02em;
+}
+
+.dm-panel-desc {
+  margin: 0.2rem 0 0 0;
+  font-size: 0.8125rem;
+  color: var(--dm-color-text-soft);
+}
+
+/* Schedule & Timeline List */
+.dm-timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.dm-timeline-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  background-color: var(--dm-color-surface-soft);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-md, 12px);
+  transition: all var(--dm-transition-fast);
+}
+
+.dm-timeline-item:hover {
+  transform: translateX(2px);
+  border-color: var(--dm-color-primary-light);
+}
+
+.dm-timeline-item__badge {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.dm-timeline-item__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dm-timeline-item__info strong {
+  font-size: 0.875rem;
+  color: var(--dm-color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dm-timeline-item__info span {
+  font-size: 0.75rem;
+  color: var(--dm-color-text-soft);
+}
+
+.dm-timeline-item__time {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--dm-color-primary);
+  background-color: var(--dm-color-primary-soft);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--dm-radius-pill, 9999px);
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .dm-timeline-item__time {
+  background-color: rgba(45, 212, 191, 0.15);
+  color: var(--dm-color-primary-light);
+}
+
+/* Recommended Providers List */
+.dm-providers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.dm-provider-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  background-color: var(--dm-color-surface-soft);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-md, 12px);
+  transition: all var(--dm-transition-fast);
+}
+
+.dm-provider-item:hover {
+  transform: translateY(-1px);
+  border-color: var(--dm-domain-marketplace, #f59e0b);
+}
+
+.dm-provider-item__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.dm-provider-item__info h3 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--dm-color-text);
+}
+
+.dm-provider-category {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--dm-domain-marketplace, #f59e0b);
+}
+
+.dm-provider-area {
+  font-size: 0.6875rem;
+  color: var(--dm-color-text-soft);
+}
+
+.dm-provider-item__action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.dm-provider-rate {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: var(--dm-color-text);
+}
+
+/* ===================================================================
+   5. BOTTOM BENTO ROW: COMMUNITY & SAFETY (6 cols) + TRUST INVARIANTS (6 cols)
+   =================================================================== */
+.dm-bento-bottom-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--dm-space-5, 1.25rem);
+}
+
+@media (min-width: 1024px) {
+  .dm-bento-bottom-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.dm-trust-points {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dm-trust-point {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  background-color: var(--dm-color-surface-soft);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-md, 12px);
+}
+
+.dm-trust-icon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.dm-trust-point strong {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--dm-color-text);
+}
+
+.dm-trust-point span {
+  font-size: 0.75rem;
+  color: var(--dm-color-text-soft);
+}
+
+/* Emergency ICE Hotlines inside Community Bento */
+.dm-ice-hotlines {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.dm-ice-hotline-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.35rem;
+  border-radius: var(--dm-radius-md, 10px);
+  background-color: var(--dm-color-danger-subtle);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #b91c1c;
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition: all var(--dm-transition-fast);
+}
+
+[data-theme="dark"] .dm-ice-hotline-btn {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.dm-ice-hotline-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--dm-domain-emergency, #ef4444);
+}
+
+.dm-ice-hotline-num {
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+/* Empty States & Error Box */
+.dm-empty-dashboard-box {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  color: var(--dm-color-text-soft);
+  font-size: 0.875rem;
+}
+
+.dm-empty-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.dm-error-box {
+  text-align: center;
+  padding: 1.25rem;
+  background-color: var(--dm-color-danger-subtle);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--dm-radius-md, 12px);
+  color: var(--dm-color-danger);
+  font-size: 0.875rem;
+}
+
+.dm-skeleton-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}

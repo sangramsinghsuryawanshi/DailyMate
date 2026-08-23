@@ -1,0 +1,504 @@
+/* DailyMate About Us Page Styles */
+
+.dm-about-page {
+  padding: var(--dm-space-12, 3rem) 0 var(--dm-space-16, 4rem) 0;
+  color: var(--dm-color-text);
+}
+
+/* 1. Hero Section */
+.dm-about-hero {
+  text-align: center;
+  max-width: 900px;
+  margin: 0 auto var(--dm-space-16, 4rem) auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--dm-space-5, 1.25rem);
+}
+
+.dm-about-hero__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: var(--dm-radius-pill, 9999px);
+  background-color: var(--dm-color-primary-soft, #e6f6f1);
+  color: var(--dm-color-primary-deep, #0d5f4c);
+  border: 1px solid var(--dm-color-primary-light, #b2dfd4);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+[data-theme="dark"] .dm-about-hero__badge {
+  background-color: rgba(45, 212, 191, 0.12);
+  color: var(--dm-color-primary-light, #2dd4bf);
+  border-color: rgba(45, 212, 191, 0.25);
+}
+
+.dm-about-hero__title {
+  font-size: clamp(2rem, 4.5vw, 3.25rem);
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+  color: var(--dm-color-text);
+  margin: 0;
+}
+
+.dm-about-hero__subtitle {
+  font-size: clamp(1rem, 1.8vw, 1.1875rem);
+  line-height: 1.6;
+  color: var(--dm-color-text-soft);
+  max-width: 720px;
+  margin: 0;
+}
+
+.dm-about-hero__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dm-space-3, 0.75rem);
+  margin-top: var(--dm-space-3, 0.75rem);
+  flex-wrap: wrap;
+}
+
+/* Hero Visual Graphic */
+.dm-about-hero-graphic {
+  background-color: var(--dm-color-surface);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-xl, 24px);
+  padding: var(--dm-space-8, 2rem);
+  box-shadow: var(--dm-shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.08));
+  margin: 0 auto var(--dm-space-16, 4rem) auto;
+  max-width: 1080px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--dm-space-4, 1rem);
+}
+
+.dm-about-hero-pill {
+  padding: var(--dm-space-4, 1rem);
+  background-color: var(--dm-color-surface-soft);
+  border-radius: var(--dm-radius-md, 12px);
+  border: 1px solid var(--dm-color-border);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all var(--dm-transition-fast);
+}
+
+.dm-about-hero-pill:hover {
+  transform: translateY(-2px);
+  border-color: var(--dm-color-primary);
+}
+
+.dm-about-hero-pill__icon {
+  font-size: 1.5rem;
+}
+
+.dm-about-hero-pill__text strong {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--dm-color-text);
+}
+
+.dm-about-hero-pill__text span {
+  font-size: 0.75rem;
+  color: var(--dm-color-text-soft);
+}
+
+/* 2. What is DailyMate Overview */
+.dm-about-overview-card {
+  background-color: var(--dm-color-surface);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-xl, 20px);
+  padding: var(--dm-space-10, 2.5rem);
+  box-shadow: var(--dm-shadow-card);
+  margin-bottom: var(--dm-space-16, 4rem);
+  text-align: center;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.dm-about-overview-lead {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--dm-color-primary-deep);
+  margin: 0 0 1rem 0;
+}
+
+[data-theme="dark"] .dm-about-overview-lead {
+  color: var(--dm-color-primary-light);
+}
+
+.dm-about-overview-copy {
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--dm-color-text-soft);
+  margin: 0;
+}
+
+/* 3. Problem vs Solution Comparison Matrix */
+.dm-about-comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--dm-space-6, 1.5rem);
+  margin-bottom: var(--dm-space-16, 4rem);
+}
+
+@media (min-width: 768px) {
+  .dm-about-comparison-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.dm-about-comparison-card {
+  border-radius: var(--dm-radius-xl, 20px);
+  padding: var(--dm-space-8, 2rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dm-space-4, 1rem);
+  box-shadow: var(--dm-shadow-card);
+}
+
+.dm-about-comparison-card--before {
+  background-color: var(--dm-color-surface);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.dm-about-comparison-card--after {
+  background-color: var(--dm-color-surface);
+  border: 1px solid rgba(31, 143, 116, 0.4);
+  box-shadow: 0 8px 24px rgba(31, 143, 116, 0.1);
+}
+
+.dm-about-comparison-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--dm-radius-pill, 9999px);
+  width: fit-content;
+}
+
+.dm-about-comparison-badge--red {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.dm-about-comparison-badge--green {
+  background-color: var(--dm-color-primary-soft, #e6f6f1);
+  color: var(--dm-color-primary-deep, #0d5f4c);
+}
+
+[data-theme="dark"] .dm-about-comparison-badge--green {
+  background-color: rgba(45, 212, 191, 0.15);
+  color: var(--dm-color-primary-light, #2dd4bf);
+}
+
+.dm-about-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dm-about-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.9375rem;
+  color: var(--dm-color-text);
+  line-height: 1.5;
+}
+
+.dm-about-list-item__icon {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+/* 4. Vision & Mission Grid */
+.dm-about-vm-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--dm-space-6, 1.5rem);
+  margin-bottom: var(--dm-space-16, 4rem);
+}
+
+@media (min-width: 768px) {
+  .dm-about-vm-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.dm-about-vm-card {
+  background-color: var(--dm-color-surface);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-xl, 20px);
+  padding: var(--dm-space-8, 2rem);
+  box-shadow: var(--dm-shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dm-space-4, 1rem);
+}
+
+.dm-about-vm-card h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.dm-about-vm-card p {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--dm-color-text-soft);
+  margin: 0;
+}
+
+/* 5. Key Capabilities Grid (7 areas) */
+.dm-about-caps-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--dm-space-5, 1.25rem);
+  margin-bottom: var(--dm-space-16, 4rem);
+}
+
+@media (min-width: 640px) {
+  .dm-about-caps-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dm-about-caps-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.dm-about-cap-card {
+  background-color: var(--dm-color-surface);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-lg, 16px);
+  padding: var(--dm-space-6, 1.5rem);
+  box-shadow: var(--dm-shadow-card);
+  transition: all var(--dm-transition-normal);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dm-space-3, 0.75rem);
+}
+
+.dm-about-cap-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--dm-color-border-hover);
+  box-shadow: var(--dm-shadow-card-hover);
+}
+
+.dm-about-cap-card__icon {
+  font-size: 1.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.dm-about-cap-card__title {
+  font-size: 1.125rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--dm-color-text);
+}
+
+.dm-about-cap-card__desc {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--dm-color-text-soft);
+  margin: 0;
+}
+
+/* 6. Core Values Grid */
+.dm-about-values-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--dm-space-5, 1.25rem);
+  margin-bottom: var(--dm-space-16, 4rem);
+}
+
+@media (min-width: 640px) {
+  .dm-about-values-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dm-about-values-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.dm-about-value-card {
+  background-color: var(--dm-color-surface);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-lg, 16px);
+  padding: var(--dm-space-6, 1.5rem);
+  box-shadow: var(--dm-shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: all var(--dm-transition-normal);
+}
+
+.dm-about-value-card:hover {
+  border-color: var(--dm-color-primary);
+  transform: translateY(-2px);
+}
+
+.dm-about-value-card__title {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--dm-color-primary-deep);
+  margin: 0;
+}
+
+[data-theme="dark"] .dm-about-value-card__title {
+  color: var(--dm-color-primary-light);
+}
+
+.dm-about-value-card__desc {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--dm-color-text-soft);
+  margin: 0;
+}
+
+/* 7. How DailyMate Works Steps */
+.dm-about-steps-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--dm-space-5, 1.25rem);
+  margin-bottom: var(--dm-space-16, 4rem);
+}
+
+@media (min-width: 640px) {
+  .dm-about-steps-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dm-about-steps-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.dm-about-step-card {
+  background-color: var(--dm-color-surface);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-lg, 16px);
+  padding: var(--dm-space-6, 1.5rem);
+  box-shadow: var(--dm-shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.dm-about-step-number {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--dm-color-primary);
+  letter-spacing: -0.03em;
+}
+
+.dm-about-step-title {
+  font-size: 1rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--dm-color-text);
+}
+
+.dm-about-step-desc {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--dm-color-text-soft);
+  margin: 0;
+}
+
+/* 8. Trust, Privacy & Tech Section */
+.dm-about-trust-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--dm-space-6, 1.5rem);
+  margin-bottom: var(--dm-space-16, 4rem);
+}
+
+@media (min-width: 768px) {
+  .dm-about-trust-grid {
+    grid-template-columns: 1.2fr 1fr;
+  }
+}
+
+.dm-about-trust-card {
+  background-color: var(--dm-color-surface);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-xl, 20px);
+  padding: var(--dm-space-8, 2rem);
+  box-shadow: var(--dm-shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dm-space-4, 1rem);
+}
+
+.dm-about-tech-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.dm-about-tech-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--dm-radius-pill, 9999px);
+  background-color: var(--dm-color-surface-soft);
+  color: var(--dm-color-text);
+  border: 1px solid var(--dm-color-border);
+}
+
+/* 9. Bottom CTA Section */
+.dm-about-cta-card {
+  background: linear-gradient(135deg, var(--dm-color-primary-deep, #0d5f4c), #093b30);
+  color: #ffffff;
+  border-radius: var(--dm-radius-xl, 24px);
+  padding: var(--dm-space-12, 3rem) var(--dm-space-8, 2rem);
+  text-align: center;
+  box-shadow: 0 16px 36px rgba(13, 95, 76, 0.25);
+  margin-bottom: var(--dm-space-12, 3rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--dm-space-4, 1rem);
+}
+
+.dm-about-cta-card h2 {
+  font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  margin: 0;
+  color: #ffffff;
+}
+
+.dm-about-cta-card p {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 600px;
+  margin: 0;
+}

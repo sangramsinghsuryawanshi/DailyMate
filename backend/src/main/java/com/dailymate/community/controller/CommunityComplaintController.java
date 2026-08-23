@@ -3,8 +3,8 @@ package com.dailymate.community.controller;
 import com.dailymate.community.dto.request.CommunityComplaintRequest;
 import com.dailymate.community.dto.response.CommunityComplaintResponse;
 import com.dailymate.community.service.CommunityComplaintService;
+import com.dailymate.core.dto.response.PageResponse;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -27,8 +28,13 @@ public class CommunityComplaintController {
     }
 
     @GetMapping("/complaints")
-    public List<CommunityComplaintResponse> getComplaints() {
-        return communityComplaintService.getComplaints();
+    public PageResponse<CommunityComplaintResponse> getComplaints(
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return communityComplaintService.getComplaints(category, status, search, page, size);
     }
 
     @PostMapping("/complaints")

@@ -9,6 +9,8 @@ const getProvidersMock = vi.fn()
 const getRemindersMock = vi.fn()
 const getLocalEventsMock = vi.fn()
 const getNotificationsMock = vi.fn()
+const getExpensesMock = vi.fn()
+const getBloodRequestsMock = vi.fn()
 
 vi.mock('../../marketplace/services/marketplaceApi', () => ({
   getProviders: () => getProvidersMock(),
@@ -24,6 +26,14 @@ vi.mock('../../events/services/localEventsApi', () => ({
 
 vi.mock('../../notification/services/notificationsApi', () => ({
   getNotifications: () => getNotificationsMock(),
+}))
+
+vi.mock('../../expense/services/expenseApi', () => ({
+  getExpenses: () => getExpensesMock(),
+}))
+
+vi.mock('../../blood/services/bloodApi', () => ({
+  getBloodRequests: () => getBloodRequestsMock(),
 }))
 
 function renderDashboardPage(user = { id: 'u-1', firstName: 'Sangram', email: 'sangram@example.com' }) {
@@ -47,11 +57,15 @@ describe('DashboardPage — Data Integrity & Aggregation', () => {
     getRemindersMock.mockReset()
     getLocalEventsMock.mockReset()
     getNotificationsMock.mockReset()
+    getExpensesMock.mockReset()
+    getBloodRequestsMock.mockReset()
 
     getProvidersMock.mockResolvedValue([])
     getRemindersMock.mockResolvedValue([])
     getLocalEventsMock.mockResolvedValue([])
     getNotificationsMock.mockResolvedValue({ content: [], totalElements: 0 })
+    getExpensesMock.mockResolvedValue([])
+    getBloodRequestsMock.mockResolvedValue([])
   })
 
   it('renders real marketplace providers with INR currency and NO fabricated ratings or distances', async () => {
@@ -215,5 +229,39 @@ describe('DashboardPage — Data Integrity & Aggregation', () => {
 
     // Reminders still successfully render!
     expect(screen.getByText(/💊 Vitamin D3/i)).toBeInTheDocument()
+  })
+
+  it('renders modern Bento Grid architecture with AI Companion, Quick Actions, and Emergency hotlines', async () => {
+    renderDashboardPage()
+
+    await waitFor(() => {
+      // 1. Daily Overview Hero Bento Card
+      expect(screen.getByLabelText('Daily Overview')).toBeInTheDocument()
+      expect(screen.getByText('Daily Command')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: '+ Add Expense' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: '+ Add Reminder' })).toBeInTheDocument()
+
+      // 2. Integrated AI Companion Bento Widget
+      expect(screen.getByLabelText('DailyMate AI Companion')).toBeInTheDocument()
+      expect(screen.getByText('DailyMate AI')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '💰 Spending breakdown' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '💊 Due today' })).toBeInTheDocument()
+
+      // 3. Metric Bento Grid
+      expect(screen.getByLabelText('Key Life Metrics')).toBeInTheDocument()
+      expect(screen.getByText('Monthly Spending')).toBeInTheDocument()
+      expect(screen.getByText("Today's Reminders")).toBeInTheDocument()
+
+      // 4. Emergency Directory & Explicit Hotlines
+      expect(screen.getByRole('heading', { level: 2, name: /Emergency & ICE Directory/i })).toBeInTheDocument()
+      expect(screen.getByText('112')).toBeInTheDocument()
+      expect(screen.getByText('102')).toBeInTheDocument()
+      expect(screen.getByText('101')).toBeInTheDocument()
+
+      // 5. System Status & Trust Invariant
+      expect(screen.getByRole('heading', { level: 2, name: /System Status & Data Invariants/i })).toBeInTheDocument()
+      expect(screen.getByText('Private Personal Container')).toBeInTheDocument()
+      expect(screen.getByText('Explicit AI Proposals')).toBeInTheDocument()
+    })
   })
 })

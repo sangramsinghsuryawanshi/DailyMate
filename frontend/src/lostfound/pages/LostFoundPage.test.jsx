@@ -121,7 +121,7 @@ describe('LostFoundPage', () => {
       },
     ])
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderLostFoundPage({ id: 'user-1', email: 'user@example.com' })
 
     await waitFor(() => {
@@ -147,7 +147,7 @@ describe('LostFoundPage', () => {
       contactPhone: '555-3333',
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderLostFoundPage()
 
     await waitFor(() => {
@@ -191,7 +191,7 @@ describe('LostFoundPage', () => {
     ])
     deleteLostFoundPostMock.mockResolvedValue({})
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderLostFoundPage({ id: 'user-1', email: 'user@example.com' })
 
     await waitFor(() => {

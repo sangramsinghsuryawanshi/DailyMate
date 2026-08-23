@@ -50,7 +50,8 @@ class LocalEventControllerIntegrationTests {
     void anonymousCanReadPublicEventsFeedButCannotAccessPrivateEndpointsOrMutate() throws Exception {
         // Public feed -> 200 OK
         mvc.perform(get("/api/v1/events/events"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
 
         // My events -> 401 Unauthorized
         mvc.perform(get("/api/v1/events/my-events"))
@@ -107,7 +108,7 @@ class LocalEventControllerIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode sportsArray = objectMapper.readTree(sportsFeed);
+        JsonNode sportsArray = objectMapper.readTree(sportsFeed).get("content");
         assertTrue(sportsArray.size() >= 1);
         for (JsonNode item : sportsArray) {
             assertEquals("Sports", item.get("category").asText());
@@ -120,7 +121,7 @@ class LocalEventControllerIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode pubArray = objectMapper.readTree(publishedFeed);
+        JsonNode pubArray = objectMapper.readTree(publishedFeed).get("content");
         assertTrue(pubArray.size() >= 2);
     }
 
@@ -151,7 +152,7 @@ class LocalEventControllerIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode myEventsArray = objectMapper.readTree(myEventsB);
+        JsonNode myEventsArray = objectMapper.readTree(myEventsB).get("content");
         for (JsonNode item : myEventsArray) {
             assertEquals(false, eventId.equals(item.get("id").asText()));
         }

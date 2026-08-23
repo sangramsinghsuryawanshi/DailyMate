@@ -1,17 +1,27 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import Button from '../../components/Button'
-import Input from '../../components/Input'
 import MainLayout from '../../layouts/MainLayout'
 import { updateProfile, getProfile } from '../services/userApi'
 import { useAuth } from '../../hooks/useAuth'
+import { trackEvent, AnalyticsEvents } from '../../analytics/tracker'
+import {
+  Button,
+  Input,
+  Badge,
+  ResponsiveContainer,
+} from '../../design-system'
+import './ProfilePage.css'
 
 export default function ProfilePage() {
   const { user, signIn } = useAuth()
   const queryClient = useQueryClient()
   const [form, setForm] = useState({ firstName: user?.firstName ?? '', lastName: user?.lastName ?? '' })
   const [saveSuccess, setSaveSuccess] = useState(false)
+
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.PAGE_VIEW, { page: 'profile' })
+  }, [])
 
   const { data: profile, isLoading, isError } = useQuery({
     queryKey: ['profile'],
@@ -84,7 +94,9 @@ export default function ProfilePage() {
         <main className="page-state">
           <div>
             <h1>Unable to load profile</h1>
-            <Link to="/dashboard" className="btn btn-primary">Back to dashboard</Link>
+            <Link to="/dashboard">
+              <Button variant="primary">Back to dashboard</Button>
+            </Link>
           </div>
         </main>
       </MainLayout>
@@ -92,7 +104,7 @@ export default function ProfilePage() {
   }
 
   const memberSince = currentProfile?.createdAt
-    ? new Date(currentProfile.createdAt).toLocaleDateString(undefined, {
+    ? new Date(currentProfile.createdAt).toLocaleDateString('en-IN', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
@@ -101,81 +113,124 @@ export default function ProfilePage() {
 
   return (
     <MainLayout>
-      <section className="page-cover">
-        <div>
-          <p className="eyebrow">Your account</p>
-          <h1>Profile settings</h1>
-        </div>
-        <Link to="/dashboard" className="btn btn-ghost">Back to dashboard</Link>
-      </section>
-
-      <section className="profile-grid">
-        <div className="panel profile-summary">
-          <div className="profile-avatar">{initials}</div>
-          <div className="profile-summary-copy">
-            <p className="eyebrow">Role: {currentProfile?.role ?? 'USER'}</p>
-            <h2>{fullName}</h2>
-            <p className="muted">{currentProfile?.email ?? 'member@dailymate.app'}</p>
-          </div>
-          <span className="status-pill">{currentProfile?.status ?? 'ACTIVE'}</span>
-        </div>
-
-        <div className="panel">
-          <div className="panel-header">
-            <h2>Account Overview</h2>
-          </div>
-          <ul className="detail-list">
-            <li><strong>Email:</strong> {currentProfile?.email ?? '—'}</li>
-            <li><strong>Role:</strong> {currentProfile?.role ?? 'USER'}</li>
-            <li><strong>Account Status:</strong> {currentProfile?.status ?? 'ACTIVE'}</li>
-            <li><strong>Member Since:</strong> {memberSince}</li>
-          </ul>
-        </div>
-
-        <div className="panel profile-form-panel">
-          <div className="panel-header">
-            <h2>Personal Details</h2>
+      <div className="dm-profile-page">
+        <ResponsiveContainer size="wide">
+          {/* Header */}
+          <div className="dm-page-header-row">
+            <div>
+              <span className="dm-section-eyebrow">Your account</span>
+              <h1 className="dm-page-main-title">Profile settings</h1>
+              <p className="dm-page-subtitle">
+                Manage your personal information, display name, and view your verified DailyMate account status.
+              </p>
+            </div>
+            <div className="dm-page-header-actions">
+              <Link to="/dashboard">
+                <Button variant="ghost" size="md">
+                  Back to dashboard
+                </Button>
+              </Link>
+            </div>
           </div>
 
-          <form className="profile-form" onSubmit={handleSubmit}>
-            <div className="split-fields">
-              <Input
-                label="First name"
-                value={form.firstName}
-                onChange={(event) => handleChange('firstName', event.target.value)}
-                maxLength={100}
-                required
-              />
+          <div className="dm-profile-layout">
+            {/* Left Column: Identity Card & Account Overview */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div className="dm-profile-identity-card">
+                <div className="dm-profile-avatar-circle">{initials}</div>
+                <div>
+                  <span className="dm-section-eyebrow">Role: {currentProfile?.role ?? 'USER'}</span>
+                  <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0.25rem 0' }}>{fullName}</h2>
+                  <p style={{ color: 'var(--dm-color-text-soft)', fontSize: '0.875rem', margin: 0 }}>
+                    {currentProfile?.email ?? 'member@dailymate.app'}
+                  </p>
+                </div>
+                <Badge variant={currentProfile?.status === 'ACTIVE' ? 'success' : 'neutral'} size="md">
+                  {currentProfile?.status ?? 'ACTIVE'}
+                </Badge>
+              </div>
 
-              <Input
-                label="Last name"
-                value={form.lastName}
-                onChange={(event) => handleChange('lastName', event.target.value)}
-                maxLength={100}
-                required
-              />
+              <div className="dm-profile-details-card">
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0 }}>Account Overview</h3>
+                <ul className="dm-profile-info-list">
+                  <li className="dm-profile-info-item">
+                    <span className="dm-profile-info-label">Email:</span>
+                    <span className="dm-profile-info-value">{currentProfile?.email ?? '—'}</span>
+                  </li>
+                  <li className="dm-profile-info-item">
+                    <span className="dm-profile-info-label">Role:</span>
+                    <span className="dm-profile-info-value">{currentProfile?.role ?? 'USER'}</span>
+                  </li>
+                  <li className="dm-profile-info-item">
+                    <span className="dm-profile-info-label">Account Status:</span>
+                    <span className="dm-profile-info-value">{currentProfile?.status ?? 'ACTIVE'}</span>
+                  </li>
+                  <li className="dm-profile-info-item">
+                    <span className="dm-profile-info-label">Member Since:</span>
+                    <span className="dm-profile-info-value">{memberSince}</span>
+                  </li>
+                </ul>
+              </div>
             </div>
 
-            {saveSuccess && (
-              <p style={{ color: '#16a34a', margin: '0.75rem 0', fontWeight: '500' }}>
-                Profile updated successfully!
-              </p>
-            )}
+            {/* Right Column: Edit Personal Details Form */}
+            <div className="dm-profile-details-card">
+              <div>
+                <span className="dm-section-eyebrow">Identity Details</span>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0.25rem 0' }}>Personal Details</h3>
+                <p style={{ color: 'var(--dm-color-text-soft)', fontSize: '0.875rem', margin: 0 }}>
+                  Update your legal name displayed on neighborhood complaints, job listings, and marketplace inquiries.
+                </p>
+              </div>
 
-            {mutation.isError && (
-              <p className="error" style={{ color: '#ef4444', margin: '0.75rem 0' }}>
-                {mutation.error?.response?.data?.detail || mutation.error?.message || 'Unable to save profile changes.'}
-              </p>
-            )}
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                  <Input
+                    id="profile-firstname"
+                    label="First name"
+                    value={form.firstName}
+                    onChange={(event) => handleChange('firstName', event.target.value)}
+                    maxLength={100}
+                    required
+                  />
 
-            <div className="profile-actions">
-              <Button type="submit" disabled={isSubmitDisabled}>
-                {mutation.isPending ? 'Saving…' : 'Save changes'}
-              </Button>
+                  <Input
+                    id="profile-lastname"
+                    label="Last name"
+                    value={form.lastName}
+                    onChange={(event) => handleChange('lastName', event.target.value)}
+                    maxLength={100}
+                    required
+                  />
+                </div>
+
+                {saveSuccess && (
+                  <div className="dm-form-alert dm-form-alert--success">
+                    Profile updated successfully!
+                  </div>
+                )}
+
+                {mutation.isError && (
+                  <div className="dm-form-alert dm-form-alert--error">
+                    ⚠️ {mutation.error?.response?.data?.detail || mutation.error?.message || 'Unable to save profile changes.'}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '0.5rem' }}>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    disabled={isSubmitDisabled}
+                    isLoading={mutation.isPending}
+                  >
+                    {mutation.isPending ? 'Saving…' : 'Save changes'}
+                  </Button>
+                </div>
+              </form>
             </div>
-          </form>
-        </div>
-      </section>
+          </div>
+        </ResponsiveContainer>
+      </div>
     </MainLayout>
   )
 }

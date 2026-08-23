@@ -1,8 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import Button from '../../components/Button'
-import Input from '../../components/Input'
 import MainLayout from '../../layouts/MainLayout'
 import { useAuth } from '../../hooks/useAuth'
 import {
@@ -15,6 +13,19 @@ import {
   updateBloodRequest,
   updateDonationCenter,
 } from '../services/bloodApi'
+import { trackEvent, AnalyticsEvents } from '../../analytics/tracker'
+import {
+  Button,
+  Input,
+  Select,
+  Card,
+  StatCard,
+  Badge,
+  Pagination,
+  ResponsiveContainer,
+} from '../../design-system'
+import { usePagination } from '../../hooks/usePagination'
+import './BloodDonationPage.css'
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
@@ -40,35 +51,63 @@ export default function BloodDonationPage() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
 
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.PAGE_VIEW, { page: 'blood_donation' })
+  }, [])
+
   const [activeTab, setActiveTab] = useState('requests') // 'requests' | 'centers'
   const [selectedGroup, setSelectedGroup] = useState('ALL')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [scopeFilter, setScopeFilter] = useState('all') // 'all' | 'my'
 
+  const { page, pageSize, setPage, setPageSize, resetPage } = usePagination({
+    initialPage: 0,
+    initialPageSize: 20,
+    syncWithUrl: true,
+  })
+
   const [requestForm, setRequestForm] = useState(defaultRequestForm)
   const [editingRequestId, setEditingRequestId] = useState(null)
-  const [isRequestFormOpen, setIsRequestFormOpen] = useState(false)
   const [requestFormError, setRequestFormError] = useState('')
 
   const [centerForm, setCenterForm] = useState(defaultCenterForm)
   const [editingCenterId, setEditingCenterId] = useState(null)
-  const [isCenterFormOpen, setIsCenterFormOpen] = useState(false)
   const [centerFormError, setCenterFormError] = useState('')
 
   // Queries
-  const { data: requests = [], isLoading: isLoadingRequests, isError: isErrorRequests } = useQuery({
-    queryKey: ['blood-requests', selectedGroup, statusFilter],
+  const { data: requestPageData = { content: [], totalElements: 0, totalPages: 0 }, isLoading: isLoadingRequests, isError: isErrorRequests } = useQuery({
+    queryKey: ['blood-requests', { page, pageSize, selectedGroup, statusFilter, scopeFilter }],
     queryFn: () =>
       getBloodRequests({
+        page,
+        size: pageSize,
         bloodGroup: selectedGroup !== 'ALL' ? selectedGroup : undefined,
         status: statusFilter !== 'ALL' ? statusFilter : undefined,
       }),
+    placeholderData: (previousData) => previousData,
   })
 
-  const { data: centers = [], isLoading: isLoadingCenters, isError: isErrorCenters } = useQuery({
-    queryKey: ['blood-centers'],
-    queryFn: getDonationCenters,
+  const requests = useMemo(() => {
+    if (Array.isArray(requestPageData)) return requestPageData
+    return requestPageData.content ?? []
+  }, [requestPageData])
+
+  const totalRequestElements = Array.isArray(requestPageData) ? requestPageData.length : (requestPageData.totalElements ?? requests.length)
+  const totalRequestPages = Array.isArray(requestPageData) ? 1 : (requestPageData.totalPages ?? 1)
+
+  const { data: centerPageData = { content: [], totalElements: 0, totalPages: 0 }, isLoading: isLoadingCenters, isError: isErrorCenters } = useQuery({
+    queryKey: ['blood-centers', { page, pageSize }],
+    queryFn: () => getDonationCenters({ page, size: pageSize }),
+    placeholderData: (previousData) => previousData,
   })
+
+  const centers = useMemo(() => {
+    if (Array.isArray(centerPageData)) return centerPageData
+    return centerPageData.content ?? []
+  }, [centerPageData])
+
+  const totalCenterElements = Array.isArray(centerPageData) ? centerPageData.length : (centerPageData.totalElements ?? centers.length)
+  const totalCenterPages = Array.isArray(centerPageData) ? 1 : (centerPageData.totalPages ?? 1)
 
   // Filter requests by scope
   const visibleRequests = useMemo(() => {
@@ -84,6 +123,9 @@ export default function BloodDonationPage() {
     return requests.filter((r) => r.userId === user.id).length
   }, [requests, user])
 
+  const urgentCount = useMemo(() => requests.filter((r) => r.urgency === 'URGENT' && r.status === 'OPEN').length, [requests])
+  const openCount = useMemo(() => requests.filter((r) => r.status === 'OPEN').length, [requests])
+
   // Mutations for Blood Requests
   const saveRequestMutation = useMutation({
     mutationFn: (payload) =>
@@ -92,11 +134,19 @@ export default function BloodDonationPage() {
       queryClient.invalidateQueries({ queryKey: ['blood-requests'] })
       setRequestForm(defaultRequestForm)
       setEditingRequestId(null)
-      setIsRequestFormOpen(false)
       setRequestFormError('')
+      trackEvent('blood_request_created')
     },
     onError: (err) => {
-      setRequestFormError(err.response?.data?.detail || err.response?.data?.message || 'Failed to save blood request. Please check required fields.')
+      setRequestFormError(err.response?.data?.message || err.response?.data?.detail || 'Failed to submit blood request.')
+    },
+  })
+
+  const deleteRequestMutation = useMutation({
+    mutationFn: (id) => deleteBloodRequest(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['blood-requests'] })
+      trackEvent('blood_request_deleted')
     },
   })
 
@@ -105,19 +155,9 @@ export default function BloodDonationPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['blood-requests'] })
     },
-    onError: (err) => {
-      alert(err.response?.data?.detail || err.response?.data?.message || 'Failed to update status.')
-    },
   })
 
-  const deleteRequestMutation = useMutation({
-    mutationFn: deleteBloodRequest,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['blood-requests'] })
-    },
-  })
-
-  // Mutations for Centers
+  // Mutations for Donation Centers
   const saveCenterMutation = useMutation({
     mutationFn: (payload) =>
       editingCenterId ? updateDonationCenter(editingCenterId, payload) : createDonationCenter(payload),
@@ -125,16 +165,15 @@ export default function BloodDonationPage() {
       queryClient.invalidateQueries({ queryKey: ['blood-centers'] })
       setCenterForm(defaultCenterForm)
       setEditingCenterId(null)
-      setIsCenterFormOpen(false)
       setCenterFormError('')
     },
     onError: (err) => {
-      setCenterFormError(err.response?.data?.detail || err.response?.data?.message || 'Failed to save donation center.')
+      setCenterFormError(err.response?.data?.message || err.response?.data?.detail || 'Failed to save donation center.')
     },
   })
 
   const deleteCenterMutation = useMutation({
-    mutationFn: deleteDonationCenter,
+    mutationFn: (id) => deleteDonationCenter(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['blood-centers'] })
     },
@@ -150,21 +189,18 @@ export default function BloodDonationPage() {
     e.preventDefault()
     setRequestFormError('')
 
-    const units = parseInt(requestForm.unitsNeeded, 10)
-
-    if (
-      !requestForm.patientName.trim() ||
-      !requestForm.hospitalLocation.trim() ||
-      !requestForm.contactName.trim() ||
-      !requestForm.contactPhone.trim() ||
-      !units ||
-      units < 1
-    ) {
-      setRequestFormError('Please fill out all required fields with valid units (minimum 1).')
+    if (!requestForm.patientName.trim() || !requestForm.hospitalLocation.trim() || !requestForm.contactName.trim() || !requestForm.contactPhone.trim()) {
+      setRequestFormError('Please fill out all required fields.')
       return
     }
 
-    const payload = {
+    const units = parseInt(requestForm.unitsNeeded, 10)
+    if (isNaN(units) || units < 1) {
+      setRequestFormError('Units needed must be at least 1.')
+      return
+    }
+
+    saveRequestMutation.mutate({
       patientName: requestForm.patientName.trim(),
       bloodGroup: requestForm.bloodGroup,
       unitsNeeded: units,
@@ -172,14 +208,8 @@ export default function BloodDonationPage() {
       urgency: requestForm.urgency,
       contactName: requestForm.contactName.trim(),
       contactPhone: requestForm.contactPhone.trim(),
-      additionalNotes: requestForm.additionalNotes ? requestForm.additionalNotes.trim() : '',
-    }
-
-    if (editingRequestId) {
-      payload.status = requestForm.status || 'OPEN'
-    }
-
-    saveRequestMutation.mutate(payload)
+      additionalNotes: requestForm.additionalNotes.trim(),
+    })
   }
 
   function handleEditRequest(req) {
@@ -190,18 +220,16 @@ export default function BloodDonationPage() {
       unitsNeeded: req.unitsNeeded,
       hospitalLocation: req.hospitalLocation,
       urgency: req.urgency,
-      status: req.status,
       contactName: req.contactName,
       contactPhone: req.contactPhone,
       additionalNotes: req.additionalNotes || '',
     })
-    setIsRequestFormOpen(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function handleCancelRequestForm() {
     setEditingRequestId(null)
     setRequestForm(defaultRequestForm)
-    setIsRequestFormOpen(false)
     setRequestFormError('')
   }
 
@@ -236,20 +264,21 @@ export default function BloodDonationPage() {
       contact: center.contact,
       description: center.description,
     })
-    setIsCenterFormOpen(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function handleCancelCenterForm() {
     setEditingCenterId(null)
     setCenterForm(defaultCenterForm)
-    setIsCenterFormOpen(false)
     setCenterFormError('')
   }
 
   if (isLoadingRequests && isLoadingCenters) {
     return (
       <MainLayout>
-        <main className="page-state"><h1>Loading blood donation portal…</h1></main>
+        <main className="page-state">
+          <h1>Loading blood donation portal…</h1>
+        </main>
       </MainLayout>
     )
   }
@@ -259,7 +288,9 @@ export default function BloodDonationPage() {
       <MainLayout>
         <main className="page-state">
           <h1>Blood donation portal is unavailable</h1>
-          <Link to="/dashboard" className="btn btn-primary">Back to dashboard</Link>
+          <Link to="/dashboard">
+            <Button variant="primary">Back to dashboard</Button>
+          </Link>
         </main>
       </MainLayout>
     )
@@ -267,398 +298,513 @@ export default function BloodDonationPage() {
 
   return (
     <MainLayout>
-      <section className="page-cover">
-        <div>
-          <p className="eyebrow">Community health</p>
-          <h1>Blood Donation</h1>
-          <p className="subtle-text">
-            Connect patients and donors, find urgent neighborhood blood requests, and locate verified donation centers.
-          </p>
-        </div>
-        <Link to="/dashboard" className="btn btn-ghost">Back</Link>
-      </section>
-
-      {/* Main Tab Switcher */}
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <button
-          type="button"
-          className={`btn ${activeTab === 'requests' ? 'btn-primary' : 'btn-ghost'}`}
-          onClick={() => setActiveTab('requests')}
-        >
-          🩸 Blood Requests ({requests.length})
-        </button>
-        <button
-          type="button"
-          className={`btn ${activeTab === 'centers' ? 'btn-primary' : 'btn-ghost'}`}
-          onClick={() => setActiveTab('centers')}
-        >
-          🏥 Donation Centers ({centers.length})
-        </button>
-      </div>
-
-      {activeTab === 'requests' ? (
-        <section className="complaints-grid">
-          {/* Main Requests Content */}
-          <div>
-            {/* Filter Bar */}
-            <div className="panel" style={{ marginBottom: '1.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                <div>
-                  <strong style={{ fontSize: '0.9rem', marginRight: '0.5rem' }}>Blood Group:</strong>
-                  <div style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
-                    <button
-                      type="button"
-                      className={`btn btn-small ${selectedGroup === 'ALL' ? 'btn-primary' : 'btn-ghost'}`}
-                      onClick={() => setSelectedGroup('ALL')}
-                    >
-                      All
-                    </button>
-                    {BLOOD_GROUPS.map((bg) => (
-                      <button
-                        key={bg}
-                        type="button"
-                        className={`btn btn-small ${selectedGroup === bg ? 'btn-primary' : 'btn-ghost'}`}
-                        onClick={() => setSelectedGroup(bg)}
-                      >
-                        {bg}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <button
-                    type="button"
-                    className={`btn btn-small ${scopeFilter === 'all' ? 'btn-secondary' : 'btn-ghost'}`}
-                    onClick={() => setScopeFilter('all')}
-                  >
-                    All Requests
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn btn-small ${scopeFilter === 'my' ? 'btn-secondary' : 'btn-ghost'}`}
-                    onClick={() => setScopeFilter('my')}
-                  >
-                    My Requests ({myRequestsCount})
-                  </button>
-                </div>
-              </div>
+      <div className="dm-blood-page">
+        <ResponsiveContainer size="wide">
+          {/* Header */}
+          <div className="dm-page-header-row">
+            <div>
+              <span className="dm-section-eyebrow">Community Health & Emergency</span>
+              <h1 className="dm-page-main-title">Blood Donation</h1>
+              <p className="dm-page-subtitle">
+                Connect patients and donors, find urgent neighborhood blood requests, and locate verified donation centers.
+              </p>
             </div>
+            <div className="dm-page-header-actions">
+              <Link to="/dashboard">
+                <Button variant="ghost" size="md">
+                  Back to dashboard
+                </Button>
+              </Link>
+            </div>
+          </div>
 
-            {/* Requests List */}
-            <div className="notification-list">
-              {visibleRequests.length === 0 ? (
-                <div className="panel empty-state">
-                  <h3>No blood requests found</h3>
-                  <p className="muted">
-                    {selectedGroup !== 'ALL'
-                      ? `No requests currently match blood group ${selectedGroup}.`
-                      : 'No active blood requests at this time.'}
-                  </p>
-                </div>
-              ) : (
-                visibleRequests.map((req) => {
-                  const isOwner = user?.id && req.userId === user.id
-                  const isUrgent = req.urgency === 'URGENT'
-                  return (
-                    <article
-                      key={req.id}
-                      className="panel"
-                      style={{
-                        borderLeft: isUrgent ? '4px solid #ef4444' : '4px solid var(--color-primary)',
-                        marginBottom: '1rem',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <span
-                            style={{
-                              background: isUrgent ? '#fee2e2' : 'var(--color-secondary)',
-                              color: isUrgent ? '#b91c1c' : 'var(--color-primary-deep)',
-                              padding: '0.35rem 0.75rem',
-                              borderRadius: 'var(--radius-sm)',
-                              fontWeight: '800',
-                              fontSize: '1.1rem',
-                            }}
+          {/* Key Metrics Grid */}
+          <div className="dm-blood-stats-grid">
+            <StatCard
+              domain="emergency"
+              label="Urgent Appeals"
+              value={String(urgentCount)}
+              trend="Priority"
+              trendDirection={urgentCount > 0 ? 'down' : 'up'}
+              trendLabel="Critical surgery"
+              icon="🔴"
+            />
+            <StatCard
+              domain="emergency"
+              label="Open Requests"
+              value={String(openCount)}
+              trend="Active"
+              trendDirection="neutral"
+              trendLabel="Community needs"
+              icon="🩸"
+            />
+            <StatCard
+              domain="emergency"
+              label="Donation Centers"
+              value={String(centers.length)}
+              trend="Verified"
+              trendDirection="up"
+              trendLabel="Certified banks"
+              icon="🏥"
+            />
+            <StatCard
+              domain="emergency"
+              label="My Requests"
+              value={String(myRequestsCount)}
+              trend="Managed"
+              trendDirection="neutral"
+              trendLabel="Owner controls"
+              icon="👤"
+            />
+          </div>
+
+          {/* Main Tab Switcher */}
+          <div className="dm-blood-tabs-row">
+            <div className="dm-blood-nav-tabs" role="tablist">
+              <button
+                type="button"
+                className={`dm-blood-tab-btn ${activeTab === 'requests' ? 'active' : ''}`}
+                onClick={() => setActiveTab('requests')}
+              >
+                🩸 Blood Requests ({requests.length})
+              </button>
+              <button
+                type="button"
+                className={`dm-blood-tab-btn ${activeTab === 'centers' ? 'active' : ''}`}
+                onClick={() => setActiveTab('centers')}
+              >
+                🏥 Donation Centers ({centers.length})
+              </button>
+            </div>
+          </div>
+
+          {/* 2-Column Responsive Layout */}
+          <div className="dm-provider-profile-layout">
+            {/* Left Column: Feeds */}
+            <div>
+              {activeTab === 'requests' ? (
+                <div>
+                  {/* Filter Toolbar */}
+                  <div className="dm-blood-filter-toolbar">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: '0.875rem' }}>Blood Group:</strong>
+                        <div className="dm-blood-group-pills">
+                          <button
+                            type="button"
+                            className={`dm-blood-group-pill ${selectedGroup === 'ALL' ? 'active' : ''}`}
+                            onClick={() => setSelectedGroup('ALL')}
                           >
-                            {req.bloodGroup}
-                          </span>
-                          <div>
-                            <h3 style={{ margin: 0, fontSize: '1.15rem' }}>
-                              {req.patientName} · {req.unitsNeeded} {req.unitsNeeded === 1 ? 'unit' : 'units'}
-                            </h3>
-                            <div className="small-muted" style={{ marginTop: '0.2rem' }}>
-                              📍 {req.hospitalLocation}
+                            All
+                          </button>
+                          {BLOOD_GROUPS.map((bg) => (
+                            <button
+                              key={bg}
+                              type="button"
+                              className={`dm-blood-group-pill ${selectedGroup === bg ? 'active' : ''}`}
+                              onClick={() => setSelectedGroup(bg)}
+                            >
+                              {bg}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          className={`dm-category-filter-btn ${scopeFilter === 'all' ? 'active' : ''}`}
+                          onClick={() => setScopeFilter('all')}
+                        >
+                          All Requests
+                        </button>
+                        <button
+                          type="button"
+                          className={`dm-category-filter-btn ${scopeFilter === 'my' ? 'active' : ''}`}
+                          onClick={() => setScopeFilter('my')}
+                        >
+                          My Requests ({myRequestsCount})
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Requests Cards List */}
+                  {visibleRequests.length === 0 ? (
+                    <div className="dm-empty-dashboard-box">
+                      <h3>No blood requests found</h3>
+                      <p>
+                        {selectedGroup !== 'ALL'
+                          ? `No requests currently match blood group ${selectedGroup}.`
+                          : 'No active blood requests at this time.'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {visibleRequests.map((req) => {
+                        const isOwner = user?.id && req.userId === user.id
+                        const isUrgent = req.urgency === 'URGENT'
+                        return (
+                          <div key={req.id} className={`dm-blood-card ${isUrgent ? 'urgent' : ''}`}>
+                            <div>
+                              <div className="dm-blood-card-header">
+                                <span className="dm-blood-group-badge">{req.bloodGroup}</span>
+                                <div style={{ display: 'flex', gap: '0.35rem' }}>
+                                  {isUrgent && <span className="notification-badge error">🔴 URGENT</span>}
+                                  <Badge variant={req.status === 'OPEN' ? 'primary' : 'neutral'} size="sm">
+                                    {req.status}
+                                  </Badge>
+                                </div>
+                              </div>
+
+                              <div style={{ marginTop: '0.75rem' }}>
+                                <h3 className="dm-blood-card-title">
+                                  {req.patientName} · {req.unitsNeeded} {req.unitsNeeded === 1 ? 'unit' : 'units'}
+                                </h3>
+                                <p style={{ color: 'var(--dm-color-text-soft)', fontSize: '0.875rem', margin: '0 0 0.5rem 0' }}>
+                                  📍 {req.hospitalLocation}
+                                </p>
+                              </div>
+
+                              {req.additionalNotes && (
+                                <p style={{ fontSize: '0.8125rem', color: 'var(--dm-color-text-soft)', margin: '0.5rem 0' }}>
+                                  <strong>Notes:</strong> {req.additionalNotes}
+                                </p>
+                              )}
+                            </div>
+
+                            <div>
+                              <div style={{ padding: '0.5rem 0.75rem', background: 'var(--dm-color-surface-soft)', borderRadius: 'var(--dm-radius-sm, 8px)', fontSize: '0.8125rem', marginBottom: '0.75rem' }}>
+                                <strong>Contact Coordinator:</strong> {req.contactName} ·{' '}
+                                <a href={`tel:${req.contactPhone}`} style={{ color: 'var(--dm-color-primary-deep)', fontWeight: 700 }}>
+                                  {req.contactPhone}
+                                </a>
+                              </div>
+
+                              {isOwner && (
+                                <div className="dm-blood-card-footer">
+                                  {req.status === 'OPEN' && (
+                                    <>
+                                      <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() =>
+                                          statusTransitionMutation.mutate({
+                                            id: req.id,
+                                            payload: { ...req, status: 'FULFILLED' },
+                                          })
+                                        }
+                                      >
+                                        ✓ Mark Fulfilled
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          statusTransitionMutation.mutate({
+                                            id: req.id,
+                                            payload: { ...req, status: 'CANCELLED' },
+                                          })
+                                        }
+                                      >
+                                        Cancel Request
+                                      </Button>
+                                      <Button variant="ghost" size="sm" onClick={() => handleEditRequest(req)}>
+                                        Edit
+                                      </Button>
+                                    </>
+                                  )}
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => deleteRequestMutation.mutate(req.id)}
+                                  >
+                                    Delete
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </div>
+                        )
+                      })}
+                    </div>
+                  )}
 
-                        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                          {isUrgent && <span className="notification-badge error">🔴 URGENT</span>}
-                          <span className={`status-pill ${req.status.toLowerCase()}`}>{req.status}</span>
-                        </div>
-                      </div>
-
-                      {req.additionalNotes && (
-                        <p style={{ marginTop: '0.75rem', color: 'var(--color-text-soft)', fontSize: '0.92rem' }}>
-                          <strong>Notes:</strong> {req.additionalNotes}
-                        </p>
-                      )}
-
-                      <div style={{ marginTop: '0.85rem', padding: '0.65rem 0.85rem', background: 'var(--color-surface-soft)', borderRadius: 'var(--radius-sm)', fontSize: '0.88rem' }}>
-                        <strong>Contact Coordinator:</strong> {req.contactName} ·{' '}
-                        <a href={`tel:${req.contactPhone}`} style={{ color: 'var(--color-primary-deep)', fontWeight: 600 }}>
-                          {req.contactPhone}
-                        </a>
-                      </div>
-
-                      {isOwner && (
-                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-                          {req.status === 'OPEN' && (
-                            <>
-                              <Button
-                                variant="secondary"
-                                onClick={() =>
-                                  statusTransitionMutation.mutate({
-                                    id: req.id,
-                                    payload: { ...req, status: 'FULFILLED' },
-                                  })
-                                }
-                              >
-                                ✓ Mark Fulfilled
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                onClick={() =>
-                                  statusTransitionMutation.mutate({
-                                    id: req.id,
-                                    payload: { ...req, status: 'CANCELLED' },
-                                  })
-                                }
-                              >
-                                Cancel Request
-                              </Button>
-                              <Button variant="ghost" onClick={() => handleEditRequest(req)}>
-                                Edit
-                              </Button>
-                            </>
-                          )}
-                          <Button variant="ghost" onClick={() => deleteRequestMutation.mutate(req.id)}>
-                            Delete
-                          </Button>
-                        </div>
-                      )}
-                    </article>
-                  )
-                })
-              )}
-            </div>
-          </div>
-
-          {/* Aside: Request Form & Stats */}
-          <aside className="panel summary-panel">
-            <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2>{editingRequestId ? 'Edit request' : 'Request blood'}</h2>
-            </div>
-
-            {requestFormError && (
-              <div style={{ color: '#ef4444', marginBottom: '1rem', padding: '0.5rem', background: '#fee2e2', borderRadius: '4px' }}>
-                {requestFormError}
-              </div>
-            )}
-
-            <form onSubmit={handleRequestSubmit} className="notification-form">
-              <Input
-                label="Patient name"
-                name="patientName"
-                value={requestForm.patientName}
-                onChange={handleRequestFormChange}
-                maxLength={120}
-                required
-              />
-
-              <div className="split-fields">
-                <label className="field">
-                  <span>Blood group</span>
-                  <select name="bloodGroup" value={requestForm.bloodGroup} onChange={handleRequestFormChange}>
-                    {BLOOD_GROUPS.map((bg) => (
-                      <option key={bg} value={bg}>
-                        {bg}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <Input
-                  label="Units needed"
-                  name="unitsNeeded"
-                  type="number"
-                  min="1"
-                  max="50"
-                  value={requestForm.unitsNeeded}
-                  onChange={handleRequestFormChange}
-                  required
-                />
-              </div>
-
-              <Input
-                label="Hospital / Location"
-                name="hospitalLocation"
-                value={requestForm.hospitalLocation}
-                onChange={handleRequestFormChange}
-                maxLength={160}
-                required
-              />
-
-              <label className="field">
-                <span>Urgency level</span>
-                <select name="urgency" value={requestForm.urgency} onChange={handleRequestFormChange}>
-                  <option value="STANDARD">Standard</option>
-                  <option value="URGENT">Urgent (Immediate need)</option>
-                </select>
-              </label>
-
-              <div className="split-fields">
-                <Input
-                  label="Contact name"
-                  name="contactName"
-                  value={requestForm.contactName}
-                  onChange={handleRequestFormChange}
-                  maxLength={80}
-                  required
-                />
-                <Input
-                  label="Contact phone"
-                  name="contactPhone"
-                  value={requestForm.contactPhone}
-                  onChange={handleRequestFormChange}
-                  maxLength={80}
-                  required
-                />
-              </div>
-
-              <label className="field">
-                <span>Additional notes</span>
-                <textarea
-                  name="additionalNotes"
-                  value={requestForm.additionalNotes}
-                  onChange={handleRequestFormChange}
-                  rows={2}
-                  maxLength={1000}
-                />
-              </label>
-
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <Button type="submit" disabled={saveRequestMutation.isPending}>
-                  {saveRequestMutation.isPending ? 'Saving…' : editingRequestId ? 'Update request' : 'Submit request'}
-                </Button>
-                {editingRequestId && (
-                  <Button type="button" variant="ghost" onClick={handleCancelRequestForm}>
-                    Cancel
-                  </Button>
-                )}
-              </div>
-            </form>
-          </aside>
-        </section>
-      ) : (
-        /* Donation Centers Tab */
-        <section className="complaints-grid">
-          <div>
-            <div className="notification-list">
-              {centers.length === 0 ? (
-                <div className="panel empty-state">
-                  <h3>No donation centers listed</h3>
-                  <p className="muted">Community blood banks and donation centers will appear here.</p>
+                  {/* Server-Driven Pagination for Requests */}
+                  <Pagination
+                    page={page}
+                    totalPages={totalRequestPages}
+                    totalElements={totalRequestElements}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={setPageSize}
+                    disabled={isLoadingRequests}
+                  />
                 </div>
               ) : (
-                centers.map((center) => (
-                  <article key={center.id} className="panel" style={{ marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>🏥 {center.name}</h3>
-                        <div className="small-muted" style={{ marginTop: '0.25rem' }}>
-                          📍 {center.location} · 📞 {center.contact}
+                <div>
+                  {/* Donation Centers View */}
+                  {centers.length === 0 ? (
+                    <div className="dm-empty-dashboard-box">
+                      <h3>No donation centers found</h3>
+                      <p>No verified donation centers listed yet. Register one in the form to help local donors.</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {centers.map((c) => (
+                        <div key={c.id} className="dm-blood-card">
+                          <div>
+                            <h3 className="dm-blood-card-title">{c.name}</h3>
+                            <p style={{ color: 'var(--dm-color-text-soft)', fontSize: '0.875rem' }}>📍 {c.location}</p>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--dm-color-text)' }}>{c.description}</p>
+                          </div>
+                          <div className="dm-blood-card-footer">
+                            <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>📞 {c.contact}</span>
+                            {user?.role === 'ADMIN' && (
+                              <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                <Button variant="ghost" size="sm" onClick={() => handleEditCenter(c)}>
+                                  Edit
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => deleteCenterMutation.mutate(c.id)}>
+                                  Delete
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                    <p style={{ marginTop: '0.75rem', color: 'var(--color-text)' }}>{center.description}</p>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
-                      <Button variant="secondary" onClick={() => handleEditCenter(center)}>
-                        Edit
-                      </Button>
-                      <Button variant="ghost" onClick={() => deleteCenterMutation.mutate(center.id)}>
-                        Delete
+                  )}
+
+                  {/* Server-Driven Pagination for Centers */}
+                  <Pagination
+                    page={page}
+                    totalPages={totalCenterPages}
+                    totalElements={totalCenterElements}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={setPageSize}
+                    disabled={isLoadingCenters}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Right Column: Sticky Quick Action Card Form */}
+            <div>
+              {activeTab === 'requests' ? (
+                <div className="dm-provider-side-card">
+                  <div>
+                    <span className="dm-section-eyebrow">
+                      {editingRequestId ? 'Edit Request' : 'Immediate Need'}
+                    </span>
+                    <h3 style={{ margin: '0.25rem 0', fontSize: '1.125rem' }}>
+                      {editingRequestId ? 'Update Blood Request' : 'Post Blood Request'}
+                    </h3>
+                    <p style={{ color: 'var(--dm-color-text-soft)', fontSize: '0.8125rem', margin: 0 }}>
+                      Broadcast urgent patient blood requirements across the neighborhood.
+                    </p>
+                  </div>
+
+                  {requestFormError && (
+                    <div className="dm-form-alert dm-form-alert--error">⚠️ {requestFormError}</div>
+                  )}
+
+                  <form onSubmit={handleRequestSubmit} className="dm-provider-modal-form">
+                    <Input
+                      id="b-patient"
+                      name="patientName"
+                      label="Patient name"
+                      required
+                      placeholder="e.g. Kavita Patel"
+                      value={requestForm.patientName}
+                      onChange={handleRequestFormChange}
+                    />
+
+                    <div className="dm-select-group">
+                      <label htmlFor="b-group" className="dm-input-label">
+                        Blood group
+                      </label>
+                      <select
+                        id="b-group"
+                        name="bloodGroup"
+                        className="dm-select"
+                        value={requestForm.bloodGroup}
+                        onChange={handleRequestFormChange}
+                      >
+                        {BLOOD_GROUPS.map((g) => (
+                          <option key={g} value={g}>
+                            {g}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <Input
+                      id="b-units"
+                      name="unitsNeeded"
+                      label="Units needed"
+                      type="number"
+                      required
+                      min="1"
+                      value={requestForm.unitsNeeded}
+                      onChange={handleRequestFormChange}
+                    />
+
+                    <Input
+                      id="b-hospital"
+                      name="hospitalLocation"
+                      label="Hospital / Location"
+                      required
+                      placeholder="e.g. Sahyadri Hospital, Pune"
+                      value={requestForm.hospitalLocation}
+                      onChange={handleRequestFormChange}
+                    />
+
+                    <div className="dm-select-group">
+                      <label htmlFor="b-urgency" className="dm-input-label">
+                        Urgency level
+                      </label>
+                      <select
+                        id="b-urgency"
+                        name="urgency"
+                        className="dm-select"
+                        value={requestForm.urgency}
+                        onChange={handleRequestFormChange}
+                      >
+                        <option value="STANDARD">STANDARD</option>
+                        <option value="URGENT">URGENT</option>
+                      </select>
+                    </div>
+
+                    <Input
+                      id="b-cname"
+                      name="contactName"
+                      label="Contact name"
+                      required
+                      placeholder="e.g. Amit Patel"
+                      value={requestForm.contactName}
+                      onChange={handleRequestFormChange}
+                    />
+
+                    <Input
+                      id="b-cphone"
+                      name="contactPhone"
+                      label="Contact phone"
+                      type="tel"
+                      required
+                      placeholder="555-9999"
+                      value={requestForm.contactPhone}
+                      onChange={handleRequestFormChange}
+                    />
+
+                    <Input
+                      id="b-notes"
+                      name="additionalNotes"
+                      label="Additional notes"
+                      placeholder="Surgery schedule, required before date..."
+                      value={requestForm.additionalNotes}
+                      onChange={handleRequestFormChange}
+                    />
+
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      {editingRequestId && (
+                        <Button type="button" variant="ghost" fullWidth onClick={handleCancelRequestForm}>
+                          Cancel
+                        </Button>
+                      )}
+                      <Button
+                        type="submit"
+                        variant="danger"
+                        fullWidth
+                        isLoading={saveRequestMutation.isPending}
+                      >
+                        Submit request
                       </Button>
                     </div>
-                  </article>
-                ))
+                  </form>
+                </div>
+              ) : (
+                <div className="dm-provider-side-card">
+                  <div>
+                    <span className="dm-section-eyebrow">
+                      {editingCenterId ? 'Edit Center' : 'Verified Directory'}
+                    </span>
+                    <h3 style={{ margin: '0.25rem 0', fontSize: '1.125rem' }}>
+                      {editingCenterId ? 'Update Donation Center' : 'Register Donation Center'}
+                    </h3>
+                    <p style={{ color: 'var(--dm-color-text-soft)', fontSize: '0.8125rem', margin: 0 }}>
+                      Add accredited blood banks and hospital donation centers.
+                    </p>
+                  </div>
+
+                  {centerFormError && (
+                    <div className="dm-form-alert dm-form-alert--error">⚠️ {centerFormError}</div>
+                  )}
+
+                  <form onSubmit={handleCenterSubmit} className="dm-provider-modal-form">
+                    <Input
+                      id="c-name"
+                      name="name"
+                      label="Center name"
+                      required
+                      placeholder="e.g. Red Cross Blood Bank"
+                      value={centerForm.name}
+                      onChange={handleCenterFormChange}
+                    />
+
+                    <Input
+                      id="c-location"
+                      name="location"
+                      label="Address / Location"
+                      required
+                      placeholder="e.g. Camp, Pune"
+                      value={centerForm.location}
+                      onChange={handleCenterFormChange}
+                    />
+
+                    <Input
+                      id="c-contact"
+                      name="contact"
+                      label="Contact phone / info"
+                      required
+                      placeholder="e.g. +91 20 2612 0000"
+                      value={centerForm.contact}
+                      onChange={handleCenterFormChange}
+                    />
+
+                    <Input
+                      id="c-desc"
+                      name="description"
+                      label="Operating details / description"
+                      required
+                      placeholder="Operating hours 24/7, all blood components available"
+                      value={centerForm.description}
+                      onChange={handleCenterFormChange}
+                    />
+
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      {editingCenterId && (
+                        <Button type="button" variant="ghost" fullWidth onClick={handleCancelCenterForm}>
+                          Cancel
+                        </Button>
+                      )}
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        fullWidth
+                        isLoading={saveCenterMutation.isPending}
+                      >
+                        Register center
+                      </Button>
+                    </div>
+                  </form>
+                </div>
               )}
             </div>
           </div>
-
-          <aside className="panel summary-panel">
-            <div className="panel-header">
-              <h2>{editingCenterId ? 'Edit donation center' : 'Add donation center'}</h2>
-            </div>
-
-            {centerFormError && (
-              <div style={{ color: '#ef4444', marginBottom: '1rem', padding: '0.5rem', background: '#fee2e2', borderRadius: '4px' }}>
-                {centerFormError}
-              </div>
-            )}
-
-            <form onSubmit={handleCenterSubmit} className="notification-form">
-              <Input
-                label="Center name"
-                name="name"
-                value={centerForm.name}
-                onChange={handleCenterFormChange}
-                maxLength={120}
-                required
-              />
-              <Input
-                label="Location"
-                name="location"
-                value={centerForm.location}
-                onChange={handleCenterFormChange}
-                maxLength={160}
-                required
-              />
-              <Input
-                label="Contact phone / info"
-                name="contact"
-                value={centerForm.contact}
-                onChange={handleCenterFormChange}
-                maxLength={40}
-                required
-              />
-              <label className="field">
-                <span>Description / Hours</span>
-                <textarea
-                  name="description"
-                  value={centerForm.description}
-                  onChange={handleCenterFormChange}
-                  rows={3}
-                  maxLength={500}
-                  required
-                />
-              </label>
-
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <Button type="submit" disabled={saveCenterMutation.isPending}>
-                  {saveCenterMutation.isPending ? 'Saving…' : editingCenterId ? 'Update center' : 'Add center'}
-                </Button>
-                {editingCenterId && (
-                  <Button type="button" variant="ghost" onClick={handleCancelCenterForm}>
-                    Cancel
-                  </Button>
-                )}
-              </div>
-            </form>
-          </aside>
-        </section>
-      )}
+        </ResponsiveContainer>
+      </div>
     </MainLayout>
   )
 }

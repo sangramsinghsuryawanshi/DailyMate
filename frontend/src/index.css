@@ -1,23 +1,148 @@
 :root {
-  --color-primary: #1f8f74;
-  --color-primary-deep: #126a56;
-  --color-secondary: #eaf6f2;
-  --color-accent: #f6b84b;
-  --color-surface: #ffffff;
-  --color-surface-soft: #f7f9f4;
-  --color-background: #edf5f1;
-  --color-text: #1d2a2a;
-  --color-text-soft: #5e6f6b;
-  --color-border: #d9e6e1;
-  --color-success: #2a9d72;
-  --color-warning: #c67a15;
-  --color-error: #c94b4b;
-  --color-info: #3c6edb;
-  --shadow-soft: 0 18px 40px rgba(22, 39, 35, 0.08);
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-pill: 999px;
+  /* =========================================================
+     DailyMate Design System CSS Custom Properties (--dm-*)
+     ========================================================= */
+
+  /* Brand & Primary */
+  --dm-color-primary: #1f8f74;
+  --dm-color-primary-hover: #17735d;
+  --dm-color-primary-deep: #126a56;
+  --dm-color-primary-subtle: #eaf6f2;
+
+  /* Secondary & Accent */
+  --dm-color-secondary: #eaf6f2;
+  --dm-color-accent: #f6b84b;
+  --dm-color-accent-hover: #e0a338;
+
+  /* Background & Surfaces */
+  --dm-color-background: #f8fafc;
+  --dm-color-background-elevated: #edf5f1;
+  --dm-color-surface: #ffffff;
+  --dm-color-surface-soft: #f8fafc;
+  --dm-color-surface-hover: #f1f5f9;
+
+  /* Text & Typography */
+  --dm-color-text: #0f172a;
+  --dm-color-text-muted: #475569;
+  --dm-color-text-soft: #64748b;
+  --dm-color-text-inverse: #ffffff;
+
+  /* Borders & Dividers */
+  --dm-color-border: #e2e8f0;
+  --dm-color-border-hover: #cbd5e1;
+  --dm-color-border-focus: #1f8f74;
+
+  /* Semantic Feedback */
+  --dm-color-success: #10b981;
+  --dm-color-success-subtle: #ecfdf5;
+  --dm-color-warning: #f59e0b;
+  --dm-color-warning-subtle: #fffbeb;
+  --dm-color-danger: #ef4444;
+  --dm-color-danger-subtle: #fef2f2;
+  --dm-color-info: #3b82f6;
+  --dm-color-info-subtle: #eff6ff;
+
+  /* Domain Accent Tokens */
+  --dm-domain-expense: #10b981;
+  --dm-domain-health: #06b6d4;
+  --dm-domain-emergency: #ef4444;
+  --dm-domain-community: #6366f1;
+  --dm-domain-marketplace: #f59e0b;
+  --dm-domain-ai: #8b5cf6;
+
+  /* Spacing & Sizing Scale */
+  --dm-space-1: 0.25rem;
+  --dm-space-2: 0.5rem;
+  --dm-space-3: 0.75rem;
+  --dm-space-4: 1rem;
+  --dm-space-5: 1.25rem;
+  --dm-space-6: 1.5rem;
+  --dm-space-8: 2rem;
+  --dm-space-10: 2.5rem;
+  --dm-space-12: 3rem;
+  --dm-space-16: 4rem;
+
+  /* Geometric Curvature */
+  --dm-radius-xs: 4px;
+  --dm-radius-sm: 8px;
+  --dm-radius-md: 12px;
+  --dm-radius-lg: 16px;
+  --dm-radius-xl: 24px;
+  --dm-radius-pill: 9999px;
+
+  /* Elevation Shadows */
+  --dm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --dm-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --dm-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
+  --dm-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+  --dm-shadow-focus: 0 0 0 3px rgba(31, 143, 116, 0.25);
+
+  /* Transitions */
+  --dm-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --dm-transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --dm-transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Backward Compatibility Mapping */
+  --color-primary: var(--dm-color-primary);
+  --color-primary-deep: var(--dm-color-primary-deep);
+  --color-secondary: var(--dm-color-secondary);
+  --color-accent: var(--dm-color-accent);
+  --color-surface: var(--dm-color-surface);
+  --color-surface-soft: var(--dm-color-surface-soft);
+  --color-background: var(--dm-color-background);
+  --color-text: var(--dm-color-text);
+  --color-text-soft: var(--dm-color-text-soft);
+  --color-border: var(--dm-color-border);
+  --color-success: var(--dm-color-success);
+  --color-warning: var(--dm-color-warning);
+  --color-error: var(--dm-color-danger);
+  --color-info: var(--dm-color-info);
+  --radius-pill: var(--dm-radius-pill);
+
+  /* Bento & Glass Accents */
+  --dm-bento-gap: var(--dm-space-5, 1.25rem);
+  --dm-bento-radius: var(--dm-radius-lg, 16px);
+  --dm-glass-bg: rgba(255, 255, 255, 0.75);
+  --dm-glass-border: rgba(226, 232, 240, 0.8);
+}
+
+[data-theme="dark"] {
+  --dm-color-primary: #2dd4bf;
+  --dm-color-primary-hover: #14b8a6;
+  --dm-color-primary-deep: #0f766e;
+  --dm-color-primary-subtle: #134e4a;
+
+  --dm-color-secondary: #1e293b;
+  --dm-color-accent: #fbbf24;
+  --dm-color-accent-hover: #f59e0b;
+
+  --dm-color-background: #0f172a;
+  --dm-color-background-elevated: #1e293b;
+  --dm-color-surface: #1e293b;
+  --dm-color-surface-soft: #334155;
+  --dm-color-surface-hover: #334155;
+
+  --dm-color-text: #f8fafc;
+  --dm-color-text-muted: #94a3b8;
+  --dm-color-text-soft: #cbd5e1;
+  --dm-color-text-inverse: #0f172a;
+
+  --dm-color-border: #334155;
+  --dm-color-border-hover: #475569;
+  --dm-color-border-focus: #2dd4bf;
+
+  --dm-color-success: #34d399;
+  --dm-color-success-subtle: #064e3b;
+  --dm-color-warning: #fbbf24;
+  --dm-color-warning-subtle: #78350f;
+  --dm-color-danger: #f87171;
+  --dm-color-danger-subtle: #7f1d1d;
+  --dm-color-info: #60a5fa;
+  --dm-color-info-subtle: #1e3a8a;
+
+  /* Bento & Glass Accents (Dark) */
+  --dm-glass-bg: rgba(30, 41, 59, 0.7);
+  --dm-glass-border: rgba(51, 65, 85, 0.8);
 }
 
 * {
@@ -290,6 +415,13 @@ input:focus, select:focus, textarea:focus {
   letter-spacing: -0.04em;
   color: var(--color-primary-deep);
   margin-bottom: 2rem;
+}
+
+.brand-logo {
+  width: 2.2rem;
+  height: 2.2rem;
+  object-fit: contain;
+  border-radius: var(--radius-sm, 0.5rem);
 }
 
 .brand-mark {

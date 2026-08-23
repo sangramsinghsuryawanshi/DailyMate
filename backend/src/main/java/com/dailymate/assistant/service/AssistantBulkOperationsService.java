@@ -2,44 +2,64 @@ package com.dailymate.assistant.service;
 
 import com.dailymate.assistant.dto.BulkExecutionResultDto;
 import com.dailymate.assistant.dto.BulkOperationPreviewDto;
+import com.dailymate.assistant.dto.request.CanonicalBulkRequest;
 import com.dailymate.assistant.entity.AssistantBulkOperation;
 import com.dailymate.assistant.repository.AssistantBulkOperationRepository;
 import com.dailymate.assistant.tool.AssistantToolDefinition;
 import com.dailymate.assistant.tool.AssistantToolRegistry;
 import com.dailymate.assistant.tool.BulkOperationStatus;
 import com.dailymate.assistant.tool.ToolScope;
+import com.dailymate.blood.dto.request.BloodRequestCreateRequest;
+import com.dailymate.blood.service.BloodDonationService;
+import com.dailymate.community.dto.request.CommunityComplaintRequest;
+import com.dailymate.community.service.CommunityComplaintService;
 import com.dailymate.core.exception.BadRequestException;
 import com.dailymate.core.exception.ConflictException;
 import com.dailymate.core.exception.ForbiddenException;
 import com.dailymate.core.exception.NotFoundException;
+import com.dailymate.emergency.dto.request.EmergencyContactRequest;
+import com.dailymate.emergency.service.EmergencyContactService;
+import com.dailymate.events.dto.request.LocalEventCreateRequest;
+import com.dailymate.events.service.LocalEventService;
 import com.dailymate.expense.dto.request.ExpenseEntryRequest;
 import com.dailymate.expense.service.ExpenseService;
+import com.dailymate.grocery.dto.request.GroceryItemRequest;
+import com.dailymate.grocery.service.GroceryComparisonService;
+import com.dailymate.jobs.dto.request.JobPostRequest;
+import com.dailymate.jobs.service.JobPostService;
+import com.dailymate.lostfound.dto.request.LostItemPostRequest;
+import com.dailymate.lostfound.service.LostFoundService;
+import com.dailymate.marketplace.dto.request.ServiceProviderRequest;
+import com.dailymate.marketplace.service.MarketplaceService;
 import com.dailymate.medicine.dto.request.MedicineReminderRequest;
 import com.dailymate.medicine.service.MedicineReminderService;
+import com.dailymate.notification.dto.request.NotificationRequest;
+import com.dailymate.notification.service.NotificationService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Universal Server-Authoritative Bulk Operations Engine for DailyMate.
- * Invariants: Pre-execution validation, previewHash protection, chunked domain execution, and zero repository bypass.
+ * Universal Server-Authoritative Bulk Operations Engine for DailyMate AI Assistant.
+ * Invariants: Pre-execution validation, snapshot integrity, confirmation phrase enforcement,
+ * proposal expiration, and zero direct repository persistence bypass.
  */
 @Service
 public class AssistantBulkOperationsService {
@@ -47,30 +67,59 @@ public class AssistantBulkOperationsService {
     private static final Logger log = LoggerFactory.getLogger("ASSISTANT_BULK_AUDIT");
     public static final int MAX_BULK_ROWS = 500;
     public static final int MAX_BULK_DELETE_ROWS = 100;
+    public static final Duration PROPOSAL_EXPIRY = Duration.ofMinutes(10);
 
     private final AssistantBulkOperationRepository bulkRepo;
     private final AssistantToolRegistry toolRegistry;
     private final ExpenseService expenseService;
     private final MedicineReminderService medicineService;
+    private final EmergencyContactService emergencyService;
+    private final BloodDonationService bloodService;
+    private final MarketplaceService marketplaceService;
+    private final LocalEventService eventService;
+    private final JobPostService jobService;
+    private final LostFoundService lostFoundService;
+    private final CommunityComplaintService complaintService;
+    private final GroceryComparisonService groceryService;
+    private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
 
     public AssistantBulkOperationsService(
             AssistantBulkOperationRepository bulkRepo,
             AssistantToolRegistry toolRegistry,
             ExpenseService expenseService,
-            MedicineReminderService medicineService) {
+            MedicineReminderService medicineService,
+            EmergencyContactService emergencyService,
+            BloodDonationService bloodService,
+            MarketplaceService marketplaceService,
+            LocalEventService eventService,
+            JobPostService jobService,
+            LostFoundService lostFoundService,
+            CommunityComplaintService complaintService,
+            GroceryComparisonService groceryService,
+            NotificationService notificationService) {
         this.bulkRepo = bulkRepo;
         this.toolRegistry = toolRegistry;
         this.expenseService = expenseService;
         this.medicineService = medicineService;
+        this.emergencyService = emergencyService;
+        this.bloodService = bloodService;
+        this.marketplaceService = marketplaceService;
+        this.eventService = eventService;
+        this.jobService = jobService;
+        this.lostFoundService = lostFoundService;
+        this.complaintService = complaintService;
+        this.groceryService = groceryService;
+        this.notificationService = notificationService;
         this.objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
     }
 
     public BulkOperationPreviewDto previewBulkOperation(
             String actorId,
             String actorRole,
-            String toolName,
-            List<Map<String, Object>> payloadRows) {
+            CanonicalBulkRequest request) {
+
+        String toolName = request.toolName();
 
         // 1. Tool Governance & Authorization
         toolRegistry.validateAuthorization(toolName, actorRole);
@@ -85,11 +134,17 @@ public class AssistantBulkOperationsService {
             throw new ForbiddenException("Administrative scope required for bulk tool: " + toolName);
         }
 
-        // 2. Server Batch Limits Enforcement
+        // Admin Reason Mandate
+        if (tool.adminReasonRequired() && (request.adminReason() == null || request.adminReason().isBlank())) {
+            throw new BadRequestException("Administrative reason is required for tool: " + toolName);
+        }
+
+        List<Map<String, Object>> payloadRows = request.payloadRows();
         if (payloadRows == null || payloadRows.isEmpty()) {
             throw new BadRequestException("Bulk payload rows must not be empty.");
         }
 
+        // 2. Server Batch Limits Enforcement
         int maxLimit = tool.destructive() ? MAX_BULK_DELETE_ROWS : MAX_BULK_ROWS;
         if (payloadRows.size() > maxLimit) {
             throw new BadRequestException("Bulk batch size of " + payloadRows.size() + " exceeds maximum allowed limit of " + maxLimit + " rows.");
@@ -102,9 +157,21 @@ public class AssistantBulkOperationsService {
         int duplicateRows = 0;
         List<String> validationErrors = new ArrayList<>();
         Set<String> seenKeys = new HashSet<>();
+        List<String> targetSnapshot = new ArrayList<>();
 
         for (int i = 0; i < payloadRows.size(); i++) {
             Map<String, Object> row = payloadRows.get(i);
+
+            // Invariant: User scope filter privilege isolation (enforce principal ownership)
+            if (tool.scope() == ToolScope.USER && row.containsKey("userId")) {
+                Object rowUserId = row.get("userId");
+                if (rowUserId != null && !actorId.equals(rowUserId.toString())) {
+                    invalidRows++;
+                    validationErrors.add("Row " + (i + 1) + ": Unauthorized cross-tenant target resource.");
+                    continue;
+                }
+            }
+
             String rowKey = row.toString();
             if (seenKeys.contains(rowKey)) {
                 duplicateRows++;
@@ -116,19 +183,48 @@ public class AssistantBulkOperationsService {
             boolean rowValid = validateRow(toolName, row, i + 1, validationErrors);
             if (rowValid) {
                 validRows++;
+                String candidateId = extractTargetResourceId(toolName, row, i + 1);
+                targetSnapshot.add(candidateId);
             } else {
                 invalidRows++;
             }
         }
 
-        // 4. Compute previewHash & Store Bulk Execution Entity
+        // 4. Compute previewHash & Server-Generated Confirmation Phrase
         String payloadJson = serializeJson(payloadRows);
-        String previewHash = computeSha256(payloadJson);
-        String bulkExecutionId = "BULK-" + System.currentTimeMillis() + "-" + actorId.substring(0, 8);
+        String targetSnapshotJson = serializeJson(targetSnapshot);
+        String previewHash = computeSha256(toolName + "|" + payloadJson + "|" + targetSnapshotJson);
+        String bulkExecutionId = "BULK-" + System.currentTimeMillis() + "-" + (actorId.length() >= 8 ? actorId.substring(0, 8) : actorId);
+        Instant expiresAt = Instant.now().plus(PROPOSAL_EXPIRY);
+
+        String confirmationPhrase = null;
+        if (tool.requiresConfirmationPhrase()) {
+            confirmationPhrase = "CONFIRM " + tool.operationType().name() + " " + totalRows + " " + tool.domain().name();
+        }
 
         String summary = String.format("Bulk %s: %d total (%d valid, %d invalid, %d duplicates)",
                 toolName, totalRows, validRows, invalidRows, duplicateRows);
 
+        // Dry Run Mode: Return preview metrics without persisting PENDING proposal
+        if (request.dryRun()) {
+            return new BulkOperationPreviewDto(
+                    bulkExecutionId,
+                    toolName,
+                    totalRows,
+                    validRows,
+                    invalidRows,
+                    duplicateRows,
+                    previewHash,
+                    confirmationPhrase,
+                    expiresAt,
+                    true,
+                    "DRY RUN: " + summary,
+                    BulkOperationStatus.PREVIEW,
+                    validationErrors
+            );
+        }
+
+        // 5. Persist PENDING Proposal
         AssistantBulkOperation operation = new AssistantBulkOperation();
         operation.setBulkExecutionId(bulkExecutionId);
         operation.setToolName(toolName);
@@ -136,6 +232,8 @@ public class AssistantBulkOperationsService {
         operation.setScope(tool.scope());
         operation.setOperationScope(tool.operationScope());
         operation.setPreviewHash(previewHash);
+        operation.setConfirmationPhrase(confirmationPhrase);
+        operation.setAdminReason(request.adminReason());
         operation.setTotalRows(totalRows);
         operation.setValidRows(validRows);
         operation.setInvalidRows(invalidRows);
@@ -143,6 +241,9 @@ public class AssistantBulkOperationsService {
         operation.setStatus(BulkOperationStatus.PENDING);
         operation.setSummary(summary);
         operation.setPayloadJson(payloadJson);
+        operation.setTargetSnapshotJson(targetSnapshotJson);
+        operation.setExpiresAt(expiresAt);
+        operation.setDryRun(false);
 
         bulkRepo.save(operation);
 
@@ -157,6 +258,9 @@ public class AssistantBulkOperationsService {
                 invalidRows,
                 duplicateRows,
                 previewHash,
+                confirmationPhrase,
+                expiresAt,
+                false,
                 summary,
                 BulkOperationStatus.PENDING,
                 validationErrors
@@ -167,7 +271,8 @@ public class AssistantBulkOperationsService {
             String actorId,
             String actorRole,
             String bulkExecutionId,
-            String clientPreviewHash) {
+            String clientPreviewHash,
+            String clientConfirmationPhrase) {
 
         // 1. Fetch & Ownership Validation
         AssistantBulkOperation operation = bulkRepo.findByBulkExecutionId(bulkExecutionId)
@@ -185,23 +290,37 @@ public class AssistantBulkOperationsService {
             return deserializeResult(operation);
         }
 
+        // 3. Proposal Expiry Check (Invariant 24)
+        if (operation.getExpiresAt() != null && Instant.now().isAfter(operation.getExpiresAt())) {
+            operation.setStatus(BulkOperationStatus.EXPIRED);
+            bulkRepo.save(operation);
+            throw new ConflictException("Bulk proposal has expired. Please generate a new preview.");
+        }
+
         if (operation.getStatus() != BulkOperationStatus.PENDING) {
             throw new ConflictException("Bulk operation cannot be confirmed in state: " + operation.getStatus());
         }
 
-        // 3. Preview Hash & Stale Preview Integrity (Invariant 8)
+        // 4. Preview Hash & Stale Preview Integrity (Invariant 8)
         if (clientPreviewHash != null && !clientPreviewHash.equalsIgnoreCase(operation.getPreviewHash())) {
             operation.setStatus(BulkOperationStatus.EXPIRED);
             bulkRepo.save(operation);
             throw new ConflictException("Stale preview detected: Target records or parameters changed since preview generation.");
         }
 
-        // 4. Mark PROCESSING
+        // 5. Confirmation Phrase Integrity (Invariant 23)
+        if (operation.getConfirmationPhrase() != null) {
+            if (clientConfirmationPhrase == null || !clientConfirmationPhrase.trim().equalsIgnoreCase(operation.getConfirmationPhrase().trim())) {
+                throw new BadRequestException("Invalid confirmation phrase. Expected: " + operation.getConfirmationPhrase());
+            }
+        }
+
+        // 6. Mark PROCESSING
         operation.setStatus(BulkOperationStatus.PROCESSING);
         operation.setConfirmedAt(Instant.now());
         bulkRepo.save(operation);
 
-        // 5. Chunked Domain Execution
+        // 7. Chunked Domain Execution using Target Snapshot
         List<Map<String, Object>> rows = deserializePayload(operation.getPayloadJson());
         int succeeded = 0;
         int failed = 0;
@@ -218,7 +337,7 @@ public class AssistantBulkOperationsService {
             }
         }
 
-        // 6. Outcome Determination
+        // 8. Outcome Determination
         BulkOperationStatus finalStatus;
         if (failed == 0) {
             finalStatus = BulkOperationStatus.COMPLETED;
@@ -284,8 +403,83 @@ public class AssistantBulkOperationsService {
                 String reminderId = (String) row.get("reminderId");
                 medicineService.deleteReminder(actorId, reminderId);
             }
+            case "emergency.bulkCreate" -> {
+                String name = (String) row.get("name");
+                String rel = row.get("relationship") != null ? (String) row.get("relationship") : "Family";
+                String phone = (String) row.get("phone");
+                String cat = row.get("category") != null ? (String) row.get("category") : "Family";
+                String notes = (String) row.get("notes");
+                emergencyService.createContact(actorId, new EmergencyContactRequest(name, cat, phone, "ICE Personal", rel + (notes != null ? " - " + notes : "")));
+            }
+            case "blood.bulkCreateRequests" -> {
+                String patientName = (String) row.get("patientName");
+                String bg = (String) row.get("bloodGroup");
+                String hosp = row.get("hospitalLocation") != null ? (String) row.get("hospitalLocation") : "City Hospital";
+                String phone = row.get("contactPhone") != null ? (String) row.get("contactPhone") : "9876543210";
+                bloodService.createRequest(actorId, new BloodRequestCreateRequest(patientName, bg, 1, hosp, "HIGH", patientName, phone, "Imported via Assistant"));
+            }
+            case "marketplace.bulkRegister" -> {
+                String name = (String) row.get("businessName");
+                if (name == null) name = (String) row.get("name");
+                String cat = (String) row.get("category");
+                if (cat == null) cat = (String) row.get("serviceType");
+                String phone = (String) row.get("phone");
+                String address = row.get("address") != null ? (String) row.get("address") : "Pune, MH";
+                marketplaceService.createProvider(actorId, new ServiceProviderRequest(name, cat, "Registered via Assistant", address, phone, null, BigDecimal.valueOf(300.00)));
+            }
+            case "events.bulkCreate" -> {
+                String title = (String) row.get("title");
+                String desc = (String) row.get("description");
+                String loc = row.get("location") != null ? (String) row.get("location") : "Local Area";
+                Instant date = row.get("eventDate") != null ? LocalDate.parse((String) row.get("eventDate")).atStartOfDay(ZoneOffset.UTC).toInstant() : Instant.now();
+                eventService.createEvent(actorId, new LocalEventCreateRequest(title, "Community", loc, date, desc));
+            }
+            case "jobs.bulkCreate" -> {
+                String title = (String) row.get("title");
+                String company = row.get("companyName") != null ? (String) row.get("companyName") : "Community Employer";
+                String loc = row.get("location") != null ? (String) row.get("location") : "Pune";
+                Object salaryObj = row.get("salary");
+                BigDecimal salary = salaryObj instanceof Number ? BigDecimal.valueOf(((Number) salaryObj).doubleValue()) : (salaryObj != null ? new BigDecimal(salaryObj.toString().replaceAll("[^0-9.]", "")) : BigDecimal.valueOf(35000));
+                jobService.createJobPost(actorId, new JobPostRequest(title, "Services", loc, "Full-time", salary, company, null, "jobs@dailymate.local", "OPEN", "Job opening via Assistant"));
+            }
+            case "lostFound.bulkCreate" -> {
+                String title = (String) row.get("title");
+                String type = row.get("type") != null ? (String) row.get("type") : "LOST";
+                String loc = row.get("location") != null ? (String) row.get("location") : "Local Area";
+                String desc = row.get("description") != null ? (String) row.get("description") : title;
+                lostFoundService.createPost(actorId, new LostItemPostRequest(title, type, loc, desc, "Community Resident", "9876543210"));
+            }
+            case "complaint.bulkSubmit" -> {
+                String title = (String) row.get("title");
+                String loc = row.get("location") != null ? (String) row.get("location") : "Community Area";
+                String desc = row.get("description") != null ? (String) row.get("description") : title;
+                complaintService.createComplaint(new CommunityComplaintRequest(title, "Infrastructure", loc, desc));
+            }
+            case "grocery.bulkAdd" -> {
+                String name = (String) row.get("name");
+                String cat = row.get("category") != null ? (String) row.get("category") : "General";
+                String store = row.get("store") != null ? (String) row.get("store") : "Local Store";
+                Object priceObj = row.get("price");
+                BigDecimal price = priceObj instanceof Number ? BigDecimal.valueOf(((Number) priceObj).doubleValue()) : new BigDecimal(priceObj.toString());
+                groceryService.createItem(actorId, new GroceryItemRequest(name, cat, store, price, "1 unit", "Pune"));
+            }
+            case "notification.bulkCreate" -> {
+                String title = (String) row.get("title");
+                String msg = row.get("message") != null ? (String) row.get("message") : title;
+                notificationService.createNotification(actorId, new NotificationRequest(title, msg, "INFO", false, null, null, "/notifications"));
+            }
             default -> throw new BadRequestException("Unsupported bulk tool executor: " + toolName);
         }
+    }
+
+    private String extractTargetResourceId(String toolName, Map<String, Object> row, int index) {
+        if (row.containsKey("expenseId")) return (String) row.get("expenseId");
+        if (row.containsKey("reminderId")) return (String) row.get("reminderId");
+        if (row.containsKey("providerId")) return (String) row.get("providerId");
+        if (row.containsKey("requestId")) return (String) row.get("requestId");
+        if (row.containsKey("eventId")) return (String) row.get("eventId");
+        if (row.containsKey("jobId")) return (String) row.get("jobId");
+        return "row-" + index;
     }
 
     private boolean validateRow(String toolName, Map<String, Object> row, int rowNum, List<String> errors) {

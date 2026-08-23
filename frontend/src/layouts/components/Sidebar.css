@@ -1,0 +1,184 @@
+.dm-sidebar {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--dm-color-surface);
+  border-right: 1px solid var(--dm-color-border);
+  width: 250px;
+  min-width: 250px;
+  height: 100vh;
+  max-height: 100vh;
+  position: relative;
+  flex-shrink: 0;
+  padding: var(--dm-space-4, 1rem) var(--dm-space-3, 0.75rem);
+  box-sizing: border-box;
+  transition: width var(--dm-transition-normal), min-width var(--dm-transition-normal);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.dm-sidebar--collapsed {
+  width: 76px;
+  min-width: 76px;
+  padding: var(--dm-space-4, 1rem) 0.5rem;
+}
+
+.dm-sidebar__brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--dm-space-4, 1rem);
+  padding: 0 0.4rem;
+}
+
+.dm-sidebar__brand-link {
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-2, 0.5rem);
+  text-decoration: none;
+  color: var(--dm-color-primary-deep);
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+}
+
+.dm-sidebar__logo {
+  width: 2.1rem;
+  height: 2.1rem;
+  object-fit: contain;
+  border-radius: var(--dm-radius-sm, 8px);
+}
+
+.dm-sidebar__brand-title {
+  white-space: nowrap;
+}
+
+.dm-sidebar__toggle-btn {
+  background: transparent;
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-xs, 4px);
+  color: var(--dm-color-text-soft);
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color var(--dm-transition-fast), color var(--dm-transition-fast);
+}
+.dm-sidebar__toggle-btn:hover {
+  background-color: var(--dm-color-surface-hover);
+  color: var(--dm-color-text);
+}
+
+.dm-sidebar__quick-action {
+  margin-bottom: var(--dm-space-3, 0.75rem);
+}
+
+.dm-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.dm-sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-3, 0.75rem);
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--dm-radius-sm, 8px);
+  color: var(--dm-color-text-muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background-color var(--dm-transition-fast), color var(--dm-transition-fast);
+  min-height: 40px;
+}
+
+.dm-sidebar--collapsed .dm-sidebar__item {
+  justify-content: center;
+  padding: 0.6rem 0;
+}
+
+.dm-sidebar__item:hover {
+  background-color: var(--dm-color-surface-hover);
+  color: var(--dm-color-text);
+}
+
+.dm-sidebar__item--active {
+  background-color: var(--dm-color-primary-subtle);
+  color: var(--dm-color-primary-deep);
+  font-weight: 700;
+}
+
+.dm-sidebar__item-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.dm-sidebar__item-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dm-sidebar__footer {
+  margin-top: auto;
+  padding-top: var(--dm-space-3, 0.75rem);
+  border-top: 1px solid var(--dm-color-border);
+}
+
+.dm-sidebar__user-link {
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-2, 0.5rem);
+  text-decoration: none;
+  color: inherit;
+  padding: 0.4rem;
+  border-radius: var(--dm-radius-sm, 8px);
+  transition: background-color var(--dm-transition-fast);
+}
+.dm-sidebar__user-link:hover {
+  background-color: var(--dm-color-surface-hover);
+}
+
+.dm-sidebar--collapsed .dm-sidebar__user-link {
+  justify-content: center;
+}
+
+.dm-sidebar__user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--dm-color-primary-subtle);
+  color: var(--dm-color-primary-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.dm-sidebar__user-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dm-sidebar__user-name {
+  font-size: 0.8125rem;
+  color: var(--dm-color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dm-sidebar__user-role {
+  font-size: 0.7rem;
+  color: var(--dm-color-text-soft);
+}

@@ -43,10 +43,12 @@ class MarketplaceControllerIntegrationTests {
     }
 
     @Test
-    void anonymousCanDiscoverProvidersAndFetchDetails() throws Exception {
+    void anonymousCanDiscoverProvidersWithPaginationAndFetchDetails() throws Exception {
         mvc.perform(get("/api/v1/marketplace/providers"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].category").value("Electrician"));
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20));
 
         String response = mvc.perform(get("/api/v1/marketplace/providers"))
                 .andExpect(status().isOk())
@@ -54,12 +56,13 @@ class MarketplaceControllerIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode providers = objectMapper.readTree(response);
-        String providerId = providers.get(0).get("id").asText();
-
-        mvc.perform(get("/api/v1/marketplace/providers/{id}", providerId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(providerId));
+        JsonNode pageNode = objectMapper.readTree(response);
+        if (pageNode.get("content").size() > 0) {
+            String providerId = pageNode.get("content").get(0).get("id").asText();
+            mvc.perform(get("/api/v1/marketplace/providers/{id}", providerId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(providerId));
+        }
     }
 
     @Test

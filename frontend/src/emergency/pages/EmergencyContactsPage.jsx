@@ -1,10 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import Button from '../../components/Button'
-import Input from '../../components/Input'
 import MainLayout from '../../layouts/MainLayout'
 import { useAuth } from '../../hooks/useAuth'
+import {
+  Button,
+  Input,
+  Card,
+  Badge,
+  TrustBadge,
+  Skeleton,
+  Pagination,
+  ResponsiveContainer,
+} from '../../design-system'
+import { usePagination } from '../../hooks/usePagination'
 import {
   createEmergencyContact,
   deleteEmergencyContact,
@@ -12,8 +21,17 @@ import {
   getMyEmergencyContacts,
   updateEmergencyContact,
 } from '../services/emergencyContactsApi'
+import { trackEvent, AnalyticsEvents } from '../../analytics/tracker'
+import './EmergencyContactsPage.css'
 
-const EMERGENCY_CATEGORIES = ['Police', 'Ambulance', 'Fire', 'Hospital', 'Helpline', 'Personal', 'Other']
+const EMERGENCY_CATEGORIES = ['Personal', 'Police', 'Ambulance', 'Fire', 'Hospital', 'Helpline', 'Other']
+
+const NATIONAL_HOTLINES = [
+  { name: 'National Emergency', number: '112', icon: '🚨', type: 'All-in-one' },
+  { name: 'Police Helpline', number: '100', icon: '👮', type: 'Immediate response' },
+  { name: 'Ambulance Service', number: '108', icon: '🚑', type: 'Medical transport' },
+  { name: 'Fire Control', number: '101', icon: '🚒', type: 'Fire rescue' },
+]
 
 const defaultForm = {
   name: '',
@@ -33,27 +51,59 @@ export default function EmergencyContactsPage() {
   const [selectedCategory, setSelectedCategory] = useState('ALL')
   const [formError, setFormError] = useState('')
 
+  const { page, pageSize, setPage, setPageSize, resetPage } = usePagination({
+    initialPage: 0,
+    initialPageSize: 20,
+    syncWithUrl: true,
+  })
+
+  useEffect(() => {
+    trackEvent(AnalyticsEvents.PAGE_VIEW, { page: 'emergency_contacts' })
+  }, [])
+
   // Public contacts query
   const {
-    data: publicContacts = [],
+    data: publicPageData = { content: [], totalElements: 0, totalPages: 0 },
     isLoading: isPublicLoading,
     isError: isPublicError,
+    refetch: refetchPublic,
   } = useQuery({
-    queryKey: ['emergency-contacts-public', selectedCategory],
-    queryFn: () => getEmergencyContacts({ category: selectedCategory !== 'ALL' ? selectedCategory : undefined }),
+    queryKey: ['emergency-contacts-public', { page, pageSize, selectedCategory }],
+    queryFn: () =>
+      getEmergencyContacts({
+        page,
+        size: pageSize,
+        category: selectedCategory !== 'ALL' ? selectedCategory : undefined,
+      }),
     enabled: activeTab === 'public',
+    placeholderData: (previousData) => previousData,
   })
+
+  const publicContacts = Array.isArray(publicPageData) ? publicPageData : (publicPageData.content ?? [])
+  const totalPublicElements = Array.isArray(publicPageData) ? publicPageData.length : (publicPageData.totalElements ?? publicContacts.length)
+  const totalPublicPages = Array.isArray(publicPageData) ? 1 : (publicPageData.totalPages ?? 1)
 
   // Personal contacts query
   const {
-    data: personalContacts = [],
+    data: personalPageData = { content: [], totalElements: 0, totalPages: 0 },
     isLoading: isPersonalLoading,
     isError: isPersonalError,
+    refetch: refetchPersonal,
   } = useQuery({
-    queryKey: ['emergency-contacts-personal', selectedCategory],
-    queryFn: () => getMyEmergencyContacts({ category: selectedCategory !== 'ALL' ? selectedCategory : undefined }),
+    queryKey: ['emergency-contacts-personal', { page, pageSize, selectedCategory }],
+    queryFn: () =>
+      getMyEmergencyContacts({
+        page,
+        size: pageSize,
+        category: selectedCategory !== 'ALL' ? selectedCategory : undefined,
+      }),
     enabled: activeTab === 'personal' && Boolean(user?.id),
+    placeholderData: (previousData) => previousData,
   })
+
+  const personalContacts = Array.isArray(personalPageData) ? personalPageData : (personalPageData.content ?? [])
+  const totalPersonalElements = Array.isArray(personalPageData) ? personalPageData.length : (personalPageData.totalElements ?? personalContacts.length)
+  const totalPersonalPages = Array.isArray(personalPageData) ? 1 : (personalPageData.totalPages ?? 1)
 
   const saveMutation = useMutation({
     mutationFn: (payload) => (editingId ? updateEmergencyContact(editingId, payload) : createEmergencyContact(payload)),
@@ -64,6 +114,7 @@ export default function EmergencyContactsPage() {
       setForm(defaultForm)
       setEditingId(null)
       setFormError('')
+      trackEvent('emergency_contact_created', { isEdit: !!editingId })
     },
     onError: (err) => {
       setFormError(err.response?.data?.detail || err.response?.data?.message || 'Failed to save contact. Please check all fields.')
@@ -79,6 +130,7 @@ export default function EmergencyContactsPage() {
         setEditingId(null)
         setForm(defaultForm)
       }
+      trackEvent('emergency_contact_deleted')
     },
   })
 
@@ -91,7 +143,7 @@ export default function EmergencyContactsPage() {
     event.preventDefault()
     setFormError('')
 
-    if (!form.name.trim() || !form.category.trim() || !form.phone.trim() || !form.location.trim() || !form.description.trim()) {
+    if (!form.name?.trim() || !form.category?.trim() || !form.phone?.trim() || !form.location?.trim() || !form.description?.trim()) {
       setFormError('Please fill out all required fields.')
       return
     }
@@ -107,14 +159,19 @@ export default function EmergencyContactsPage() {
 
   function handleEdit(contact) {
     setEditingId(contact.id)
-    setFormError('')
     setForm({
-      name: contact.name,
-      category: contact.category,
-      phone: contact.phone,
-      location: contact.location,
-      description: contact.description,
+      name: contact.name || '',
+      category: contact.category || 'Personal',
+      phone: contact.phone || '',
+      location: contact.location || '',
+      description: contact.description || '',
     })
+    setFormError('')
+    if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+      try {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      } catch (_) {}
+    }
   }
 
   function handleCancelEdit() {
@@ -123,210 +180,352 @@ export default function EmergencyContactsPage() {
     setFormError('')
   }
 
-  const isLoading = activeTab === 'public' ? isPublicLoading : isPersonalLoading
-  const isError = activeTab === 'public' ? isPublicError : isPersonalError
-  const contactsList = activeTab === 'public' ? publicContacts : personalContacts
-
-  if (isLoading) {
-    return (
-      <MainLayout>
-        <main className="page-state"><h1>Loading emergency contacts…</h1></main>
-      </MainLayout>
-    )
-  }
-
-  if (isError) {
-    return (
-      <MainLayout>
-        <main className="page-state">
-          <h1>Emergency contacts are currently unavailable</h1>
-          <Link to="/dashboard" className="btn btn-primary">Back to dashboard</Link>
-        </main>
-      </MainLayout>
-    )
-  }
+  const primaryContact = personalContacts[0]
 
   return (
     <MainLayout>
-      <section className="page-cover">
-        <div>
-          <p className="eyebrow">Safety &amp; Support</p>
-          <h1>Emergency Directory</h1>
-          <p className="subtle-text">Immediate emergency support, verified municipal hotlines, and quick-dial personal contacts.</p>
-        </div>
-        <Link to="/dashboard" className="btn btn-ghost">Back</Link>
-      </section>
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          className={`btn ${activeTab === 'public' ? 'btn-primary' : 'btn-ghost'}`}
-          onClick={() => setActiveTab('public')}
-        >
-          🚨 Verified Emergency Services
-        </button>
-        <button
-          type="button"
-          className={`btn ${activeTab === 'personal' ? 'btn-primary' : 'btn-ghost'}`}
-          onClick={() => setActiveTab('personal')}
-        >
-          👤 My Personal Contacts {user?.id && personalContacts ? `(${personalContacts.length})` : ''}
-        </button>
-      </div>
-
-      <section className="complaints-grid">
-        {/* Main Contacts List */}
-        <div>
-          {/* Category Filter Pills */}
-          <div className="panel" style={{ marginBottom: '1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-              <strong style={{ fontSize: '0.9rem', marginRight: '0.35rem' }}>Category:</strong>
-              <button
-                type="button"
-                className={`btn btn-small ${selectedCategory === 'ALL' ? 'btn-secondary' : 'btn-ghost'}`}
-                onClick={() => setSelectedCategory('ALL')}
-              >
-                All
-              </button>
-              {EMERGENCY_CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  className={`btn btn-small ${selectedCategory === cat ? 'btn-secondary' : 'btn-ghost'}`}
-                  onClick={() => setSelectedCategory(cat)}
-                >
-                  {cat}
-                </button>
-              ))}
+      <div className="dm-emergency-page">
+        <ResponsiveContainer size="wide">
+          {/* ===================================================================
+              1. PAGE HEADER & NATIONAL HOTLINES
+             =================================================================== */}
+          <div className="dm-page-header-row">
+            <div>
+              <span className="dm-section-eyebrow" style={{ color: 'var(--dm-color-danger)' }}>
+                Urgent Assistance & ICE
+              </span>
+              <h1 className="dm-page-main-title">Emergency Contacts</h1>
+              <p className="dm-page-subtitle">
+                Instant one-tap emergency calling for national hotlines and personal ICE contacts.
+              </p>
+            </div>
+            <div className="dm-page-header-actions">
+              <Link to="/assistant?prompt=Who%20are%20my%20registered%20emergency%20contacts%3F">
+                <Button variant="outline" size="sm" iconLeft="✨">
+                  Ask AI Contacts
+                </Button>
+              </Link>
             </div>
           </div>
 
-          {activeTab === 'personal' && !user?.id ? (
-            <div className="panel empty-state">
-              <h3>Personal Emergency Contacts</h3>
-              <p className="muted">Log in to save and manage your family doctors, emergency contacts, and ICE numbers.</p>
-              <Link to="/login" className="btn btn-primary" style={{ marginTop: '0.75rem' }}>
-                Log in to view personal contacts
-              </Link>
-            </div>
-          ) : contactsList.length === 0 ? (
-            <div className="panel empty-state">
-              <h3>No emergency contacts found</h3>
-              <p className="muted">
-                {activeTab === 'personal'
-                  ? 'Add your personal emergency contacts, doctor, or neighbor using the form.'
-                  : selectedCategory !== 'ALL'
-                  ? `No verified emergency services found for category "${selectedCategory}".`
-                  : 'No emergency contacts registered.'}
-              </p>
-            </div>
-          ) : (
-            <div className="notification-list">
-              {contactsList.map((contact) => {
-                const isOwner = user?.id && contact.userId === user.id
-                return (
-                  <article key={contact.id} className="panel" style={{ marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      <div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.35rem' }}>
-                          <span className="notification-badge info">{contact.category}</span>
-                          {contact.userId ? (
-                            <span className="status-pill open">Personal Contact</span>
-                          ) : (
-                            <span className="status-pill resolved">Verified Public Service</span>
-                          )}
-                        </div>
-                        <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{contact.name}</h3>
-                        <div className="small-muted" style={{ marginTop: '0.25rem' }}>
-                          📍 {contact.location}
-                        </div>
-                      </div>
+          {/* National Hotlines Direct Calling Strip */}
+          <div className="dm-hotlines-grid" aria-label="National Emergency Hotlines">
+            {NATIONAL_HOTLINES.map((hotline) => (
+              <a
+                key={hotline.number}
+                href={`tel:${hotline.number}`}
+                className="dm-hotline-card"
+                onClick={() => trackEvent('emergency_call_initiated', { name: hotline.name, phone: hotline.number })}
+              >
+                <span className="dm-hotline-icon">{hotline.icon}</span>
+                <div className="dm-hotline-info">
+                  <strong>{hotline.name}</strong>
+                  <span className="dm-hotline-desc">{hotline.type}</span>
+                </div>
+                <span className="dm-hotline-number">{hotline.number}</span>
+              </a>
+            ))}
+          </div>
 
-                      {/* Primary One-Tap Call Action */}
-                      <div>
-                        <a
-                          href={`tel:${contact.phone}`}
-                          className="btn btn-primary"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', fontWeight: 600 }}
-                        >
-                          📞 Call {contact.phone}
-                        </a>
-                      </div>
+          {/* ===================================================================
+              2. TWO-COLUMN WORKFLOW: FORM & DIRECTORY LIST
+             =================================================================== */}
+          <div className="dm-emergency-layout-grid">
+            {/* Left Column: Directory / Personal Contacts */}
+            <div className="dm-emergency-list-col">
+              <Card className="dm-emergency-panel">
+                {/* Tab Switcher */}
+                <div className="dm-emergency-tabs">
+                  <button
+                    type="button"
+                    className={`dm-emergency-tab ${activeTab === 'public' ? 'active' : ''}`}
+                    onClick={() => {
+                      setActiveTab('public')
+                      trackEvent('emergency_tab_switched', { tab: 'public' })
+                    }}
+                  >
+                    🏛️ Public Emergency Services
+                  </button>
+                  <button
+                    type="button"
+                    className={`dm-emergency-tab ${activeTab === 'personal' ? 'active' : ''}`}
+                    onClick={() => {
+                      setActiveTab('personal')
+                      trackEvent('emergency_tab_switched', { tab: 'personal' })
+                    }}
+                  >
+                    👤 My Personal Contacts
+                  </button>
+                </div>
+
+                {/* Content based on Active Tab */}
+                {activeTab === 'public' ? (
+                  isPublicLoading ? (
+                    <div className="dm-skeleton-stack">
+                      <Skeleton variant="card" height="90px" />
+                      <Skeleton variant="card" height="90px" />
+                    </div>
+                  ) : isPublicError ? (
+                    <div className="dm-error-box">
+                      <p>Unable to load public emergency services.</p>
+                      <Button variant="outline" size="sm" onClick={() => refetchPublic()}>
+                        Retry
+                      </Button>
+                    </div>
+                  ) : publicContacts.length > 0 ? (
+                    <>
+                    <div className="dm-contacts-list">
+                      {publicContacts.map((contact) => (
+                        <div key={contact.id} className="dm-contact-card dm-contact-card--public">
+                          <div className="dm-contact-top">
+                            <div className="dm-contact-info">
+                              <div className="dm-contact-title-row">
+                                <h3>{contact.name}</h3>
+                                <span className="dm-verified-tag">Verified Public Service</span>
+                              </div>
+                              <span className="dm-contact-cat">{contact.category} · {contact.location}</span>
+                              <p className="dm-contact-desc">{contact.description}</p>
+                            </div>
+                            <div className="dm-contact-action">
+                              <a
+                                href={`tel:${contact.phone}`}
+                                className="dm-call-button"
+                                aria-label={`Call ${contact.phone}`}
+                                onClick={() => trackEvent('emergency_call_initiated', { name: contact.name, phone: contact.phone })}
+                              >
+                                📞 Call {contact.phone}
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
 
-                    <p style={{ marginTop: '0.75rem', color: 'var(--color-text)', fontSize: '0.95rem', lineHeight: '1.5' }}>
-                      {contact.description}
-                    </p>
+                    {/* Server-Driven Pagination for Public Contacts */}
+                    <Pagination
+                      page={page}
+                      totalPages={totalPublicPages}
+                      totalElements={totalPublicElements}
+                      pageSize={pageSize}
+                      onPageChange={setPage}
+                      onPageSizeChange={setPageSize}
+                      disabled={isPublicLoading}
+                    />
+                  </>
+                  ) : (
+                    <div className="dm-empty-dashboard-box">
+                      <p>No emergency contacts found.</p>
+                    </div>
+                  )
+                ) : (
+                  /* Personal ICE Contacts Tab */
+                  !user?.id ? (
+                    <div className="dm-auth-prompt-card">
+                      <p>Log in to save and manage your family doctors, personal ICE contacts, and trusted neighbors.</p>
+                      <Link to="/login" className="dm-button dm-button--primary">
+                        Log in to view personal contacts
+                      </Link>
+                    </div>
+                  ) : isPersonalLoading ? (
+                    <div className="dm-skeleton-stack">
+                      <Skeleton variant="card" height="90px" />
+                      <Skeleton variant="card" height="90px" />
+                    </div>
+                  ) : isPersonalError ? (
+                    <div className="dm-error-box">
+                      <p>Unable to load personal emergency contacts.</p>
+                      <Button variant="outline" size="sm" onClick={() => refetchPersonal()}>
+                        Retry
+                      </Button>
+                    </div>
+                  ) : personalContacts.length > 0 ? (
+                    <>
+                    <div className="dm-contacts-list">
+                      {personalContacts.map((contact, idx) => {
+                        const isPrimary = idx === 0
+                        return (
+                          <div
+                            key={contact.id}
+                            className={`dm-contact-card dm-contact-card--personal ${
+                              isPrimary ? 'dm-contact-card--primary' : ''
+                            }`}
+                          >
+                            {isPrimary && (
+                              <div className="dm-primary-badge-strip">
+                                <span>⭐ PRIMARY ICE CONTACT</span>
+                              </div>
+                            )}
+                            <div className="dm-contact-top">
+                              <div className="dm-contact-info">
+                                <div className="dm-contact-title-row">
+                                  <h3>{contact.name}</h3>
+                                  <span className="dm-personal-tag">Personal Contact</span>
+                                </div>
+                                <span className="dm-contact-cat">{contact.category} · {contact.location}</span>
+                                <p className="dm-contact-desc">{contact.description}</p>
+                              </div>
+                              <div className="dm-contact-action">
+                                <a
+                                  href={`tel:${contact.phone}`}
+                                  className="dm-call-button dm-call-button--primary"
+                                  aria-label={`Call ${contact.phone}`}
+                                  onClick={() => trackEvent('emergency_call_initiated', { name: contact.name, phone: contact.phone })}
+                                >
+                                  📞 Call {contact.phone}
+                                </a>
+                              </div>
+                            </div>
 
-                    {/* Owner controls: rendered ONLY for personal contacts owned by logged-in user */}
-                    {isOwner && (
-                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
-                        <Button variant="secondary" onClick={() => handleEdit(contact)}>
-                          Edit
-                        </Button>
-                        <Button variant="ghost" onClick={() => deleteMutation.mutate(contact.id)}>
-                          Delete
-                        </Button>
-                      </div>
-                    )}
-                  </article>
-                )
-              })}
-            </div>
-          )}
-        </div>
+                            <div className="dm-contact-bottom">
+                              <span className="dm-contact-phone-display">Phone: {contact.phone}</span>
+                              <div className="dm-contact-util-actions">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEdit(contact)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="dm-btn-danger-hover"
+                                  onClick={() => deleteMutation.mutate(contact.id)}
+                                  isLoading={
+                                    deleteMutation.isPending && deleteMutation.variables === contact.id
+                                  }
+                                >
+                                  Delete
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
 
-        {/* Side Panel Form (Available for authenticated users) */}
-        {user?.id && (
-          <aside className="panel summary-panel">
-            <div className="panel-header">
-              <h2>{editingId ? 'Edit contact' : 'Add personal contact'}</h2>
-            </div>
-
-            {formError && (
-              <div style={{ color: '#ef4444', marginBottom: '1rem', padding: '0.5rem', background: '#fee2e2', borderRadius: '4px' }}>
-                {formError}
-              </div>
-            )}
-
-            <form className="notification-form" onSubmit={handleSubmit}>
-              <Input label="Contact name / Service" name="name" value={form.name} onChange={handleChange} maxLength={120} required />
-
-              <label className="field">
-                <span>Category</span>
-                <select name="category" value={form.category} onChange={handleChange}>
-                  {EMERGENCY_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <Input label="Phone number" name="phone" value={form.phone} onChange={handleChange} maxLength={40} placeholder="e.g. +91 98765 43210 or 108" required />
-
-              <Input label="Location / Clinic" name="location" value={form.location} onChange={handleChange} maxLength={160} required />
-
-              <label className="field">
-                <span>Description / Notes</span>
-                <textarea name="description" value={form.description} onChange={handleChange} required rows="3" maxLength={500} placeholder="e.g. 24x7 family doctor, blood group specialist, or building watchman" />
-              </label>
-
-              <div className="profile-actions" style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <Button type="submit" disabled={saveMutation.isPending}>
-                  {saveMutation.isPending ? 'Saving…' : editingId ? 'Update contact' : 'Save contact'}
-                </Button>
-                {editingId && (
-                  <Button type="button" variant="ghost" onClick={handleCancelEdit}>
-                    Cancel
-                  </Button>
+                    {/* Server-Driven Pagination for Personal Contacts */}
+                    <Pagination
+                      page={page}
+                      totalPages={totalPersonalPages}
+                      totalElements={totalPersonalElements}
+                      pageSize={pageSize}
+                      onPageChange={setPage}
+                      onPageSizeChange={setPageSize}
+                      disabled={isPersonalLoading}
+                    />
+                  </>
+                  ) : (
+                    <div className="dm-empty-dashboard-box">
+                      <p>No emergency contacts found.</p>
+                    </div>
+                  )
                 )}
-              </div>
-            </form>
-          </aside>
-        )}
-      </section>
+              </Card>
+            </div>
+
+            {/* Right Column: Contact Form Card */}
+            <div className="dm-emergency-form-col">
+              <Card className="dm-emergency-form-card">
+                <div className="dm-form-card-header">
+                  <h2>{editingId ? 'Edit Emergency Contact' : 'Add Emergency Contact'}</h2>
+                  <p>Register a personal ICE doctor, family member, or neighbor.</p>
+                </div>
+
+                {formError && (
+                  <div className="dm-form-alert dm-form-alert--error" role="alert">
+                    <span>⚠️ {formError}</span>
+                  </div>
+                )}
+
+                <form className="dm-emergency-form" onSubmit={handleSubmit}>
+                  <Input
+                    id="emergency-name"
+                    name="name"
+                    label="Contact name"
+                    required
+                    placeholder="e.g. Dr. Ramesh Kulkarni or Father"
+                    value={form.name}
+                    onChange={handleChange}
+                  />
+
+                  <div className="dm-select-group">
+                    <label htmlFor="emergency-category" className="dm-input-label">
+                      Category
+                    </label>
+                    <select
+                      id="emergency-category"
+                      name="category"
+                      aria-label="Category"
+                      className="dm-select"
+                      value={form.category}
+                      onChange={handleChange}
+                    >
+                      {EMERGENCY_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <Input
+                    id="emergency-phone"
+                    name="phone"
+                    label="Phone number"
+                    type="tel"
+                    required
+                    placeholder="+91 98220 12345"
+                    value={form.phone}
+                    onChange={handleChange}
+                  />
+
+                  <Input
+                    id="emergency-location"
+                    name="location"
+                    label="Location / Clinic"
+                    required
+                    placeholder="e.g. Kothrud Clinic or Gate 1"
+                    value={form.location}
+                    onChange={handleChange}
+                  />
+
+                  <Input
+                    id="emergency-desc"
+                    name="description"
+                    label="Description / Notes"
+                    required
+                    placeholder="e.g. Family physician, available 24x7"
+                    value={form.description}
+                    onChange={handleChange}
+                  />
+
+                  <div className="dm-form-submit-row">
+                    {editingId && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={handleCancelEdit}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="lg"
+                      fullWidth={!editingId}
+                      isLoading={saveMutation.isPending}
+                    >
+                      {editingId ? 'Update contact' : 'Save contact'}
+                    </Button>
+                  </div>
+                </form>
+              </Card>
+            </div>
+          </div>
+        </ResponsiveContainer>
+      </div>
     </MainLayout>
   )
 }
