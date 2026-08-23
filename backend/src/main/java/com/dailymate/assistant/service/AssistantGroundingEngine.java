@@ -24,6 +24,10 @@ public class AssistantGroundingEngine {
     }
 
     public GroundingResult process(String prompt, String userId, AssistantContext context) {
-        return toolRouter.route(prompt, userId, context);
+        return toolRouter.route(prompt, userId, context, null);
+    }
+
+    public GroundingResult process(String prompt, String userId, AssistantContext context, String conversationId) {
+        return toolRouter.route(prompt, userId, context, conversationId);
     }
 }

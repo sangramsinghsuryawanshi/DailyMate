@@ -45,7 +45,8 @@ class CommunityComplaintControllerIntegrationTests {
     void publicCanViewComplaintsButCannotMutateWithoutAuth() throws Exception {
         // Public GET -> 200 OK
         mvc.perform(get("/api/v1/community-complaints/complaints"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
 
         CommunityComplaintRequest request = new CommunityComplaintRequest(
                 "Noise complaint", "Noise", "Park View", "Loud music at late hours");
@@ -94,7 +95,7 @@ class CommunityComplaintControllerIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode complaints = objectMapper.readTree(listBody);
+        JsonNode complaints = objectMapper.readTree(listBody).get("content");
         assertTrue(complaints.elements().hasNext());
 
         CommunityComplaintRequest updateRequest = new CommunityComplaintRequest(

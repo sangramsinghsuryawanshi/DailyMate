@@ -1,11 +1,16 @@
 package com.dailymate.expense.service;
 
+import com.dailymate.core.dto.response.PageResponse;
 import com.dailymate.core.exception.NotFoundException;
+import com.dailymate.core.util.PaginationUtils;
 import com.dailymate.expense.dto.request.ExpenseEntryRequest;
 import com.dailymate.expense.dto.response.ExpenseEntryResponse;
 import com.dailymate.expense.entity.ExpenseEntry;
 import com.dailymate.expense.repository.ExpenseEntryRepository;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +21,14 @@ public class ExpenseService {
 
     public ExpenseService(ExpenseEntryRepository expenses) {
         this.expenses = expenses;
+    }
+
+    public PageResponse<ExpenseEntryResponse> getEntries(String userId, int page, int size) {
+        Sort sort = Sort.by(Sort.Order.desc("spentOn"), Sort.Order.desc("id"));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sort);
+        Page<ExpenseEntryResponse> responsePage = expenses.findByUserId(userId, pageable)
+                .map(this::toResponse);
+        return PageResponse.from(responsePage);
     }
 
     public List<ExpenseEntryResponse> getEntries(String userId) {
@@ -66,6 +79,7 @@ public class ExpenseService {
                 entry.getSpentOn(),
                 entry.getNotes(),
                 entry.getCreatedAt(),
-                entry.getUpdatedAt());
+                entry.getUpdatedAt()
+        );
     }
 }

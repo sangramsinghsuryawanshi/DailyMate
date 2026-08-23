@@ -56,10 +56,10 @@ class AssistantToolRegistryIntegrationTests {
         mvc.perform(get("/api/v1/assistant/tools")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.name == 'expense.record')].riskTier").value("TIER_3"))
-                .andExpect(jsonPath("$[?(@.name == 'medicine.create')].confirmationRequired").value(true))
-                .andExpect(jsonPath("$[?(@.name == 'notification.markAllRead')].riskTier").value("TIER_2"))
-                .andExpect(jsonPath("$[?(@.name == 'report.monthlyLifeReport')].riskTier").value("TIER_1"));
+                .andExpect(jsonPath("$[?(@.name == 'expense.record')].opPolicy.riskTier").value("TIER_3"))
+                .andExpect(jsonPath("$[?(@.name == 'medicine.create')].opPolicy.confirmationRequired").value(true))
+                .andExpect(jsonPath("$[?(@.name == 'notification.markAllRead')].opPolicy.riskTier").value("TIER_2"))
+                .andExpect(jsonPath("$[?(@.name == 'report.monthlyLifeReport')].opPolicy.riskTier").value("TIER_1"));
     }
 
     @Test
@@ -110,8 +110,8 @@ class AssistantToolRegistryIntegrationTests {
         mvc.perform(get("/api/v1/marketplace/providers")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.name == 'Rahul')].category").value("Electrician"))
-                .andExpect(jsonPath("$[?(@.name == 'Rahul')].phone").value("9876543210"));
+                .andExpect(jsonPath("$.content[?(@.name == 'Rahul')].category").value("Electrician"))
+                .andExpect(jsonPath("$.content[?(@.name == 'Rahul')].phone").value("9876543210"));
     }
 
     @Test

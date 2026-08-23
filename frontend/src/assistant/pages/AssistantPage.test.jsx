@@ -16,6 +16,7 @@ const getNotificationsMock = vi.fn()
 
 vi.mock('../services/assistantApi', () => ({
   getAssistantConversations: () => getConversationsMock(),
+  getAssistantConversationMessages: () => Promise.resolve([]),
   sendAssistantChat: (prompt, conversationId) => sendAssistantChatMock(prompt, conversationId),
   confirmAssistantAction: (actionId, idempotencyKey) => confirmActionMock(actionId, idempotencyKey),
   cancelAssistantAction: (actionId) => cancelActionMock(actionId),
@@ -238,4 +239,85 @@ describe('AssistantPage — Tool Execution, Continuity, and Action Cards', () =>
       expect(deleteConversationMock).toHaveBeenCalledWith('convo-1')
     })
   })
+
+  it('renders EVENT proposal on events domain selection and confirms correctly', async () => {
+    getConversationsMock.mockResolvedValue([])
+    sendAssistantChatMock.mockResolvedValue({
+      id: 'convo-event-1',
+      title: 'Events bulk operation',
+      prompt: 'Events',
+      response: 'I have prepared an action to add these 2 events.',
+      proposedAction: {
+        actionId: 'action-evt-1',
+        actionType: 'BULK_CREATE_EVENTS',
+        summary: 'Add 2 events',
+        status: 'PENDING',
+        payload: '[{"title":"Cricket Tournament"},{"title":"Blood Donation Camp"}]',
+      },
+    })
+    confirmActionMock.mockResolvedValue({
+      actionId: 'action-evt-1',
+      status: 'EXECUTED',
+      resultMessage: 'Successfully published 2 community events.',
+    })
+
+    const user = userEvent.setup({ delay: null })
+    renderAssistantPage()
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/Ask DailyMate/i)).toBeInTheDocument()
+    })
+
+    const input = screen.getByPlaceholderText(/Ask DailyMate/i)
+    await user.type(input, 'Events')
+    await user.click(screen.getByRole('button', { name: 'Send' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Add 2 events')).toBeInTheDocument()
+      expect(screen.getByText('PENDING')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Confirm Action/i })).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: /Confirm Action/i }))
+
+    await waitFor(() => {
+      expect(confirmActionMock).toHaveBeenCalledWith('action-evt-1', expect.any(String))
+      expect(screen.getByText('EXECUTED')).toBeInTheDocument()
+      expect(screen.getByText(/Action Executed/i)).toBeInTheDocument()
+    })
+  })
+
+  it('renders MEDICINE proposal on medicine domain selection in PENDING state', async () => {
+    getConversationsMock.mockResolvedValue([])
+    sendAssistantChatMock.mockResolvedValue({
+      id: 'convo-med-1',
+      title: 'Medicine reminders',
+      prompt: 'Add medicine reminders',
+      response: 'I found 2 medicine reminders: Vitamin D at 9:00 AM, Calcium at 8:00 PM.',
+      proposedAction: {
+        actionId: 'action-med-1',
+        actionType: 'BULK_CREATE_MEDICINE_REMINDERS',
+        summary: 'Add 2 medicine reminders',
+        status: 'PENDING',
+      },
+    })
+
+    const user = userEvent.setup({ delay: null })
+    renderAssistantPage()
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/Ask DailyMate/i)).toBeInTheDocument()
+    })
+
+    const input = screen.getByPlaceholderText(/Ask DailyMate/i)
+    await user.type(input, 'Add medicine reminders')
+    await user.click(screen.getByRole('button', { name: 'Send' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Add 2 medicine reminders')).toBeInTheDocument()
+      expect(screen.getByText('PENDING')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Confirm Action/i })).toBeInTheDocument()
+    })
+  })
 })
+

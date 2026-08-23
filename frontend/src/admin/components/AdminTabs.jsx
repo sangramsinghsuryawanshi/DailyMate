@@ -10,12 +10,12 @@ export default function AdminTabs({ activeTab, onSelectTab, counts = {} }) {
   ]
 
   return (
-    <nav className="tab-nav" aria-label="Admin moderation navigation" style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+    <nav className="dm-admin-tabs-nav" aria-label="Admin moderation navigation">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
-          className={`btn ${activeTab === tab.id ? 'btn-primary' : 'btn-ghost'}`}
+          className={`dm-category-filter-btn ${activeTab === tab.id ? 'active' : ''}`}
           onClick={() => onSelectTab(tab.id)}
         >
           {tab.label}

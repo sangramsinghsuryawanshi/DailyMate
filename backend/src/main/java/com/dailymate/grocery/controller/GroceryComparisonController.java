@@ -1,11 +1,11 @@
 package com.dailymate.grocery.controller;
 
+import com.dailymate.core.dto.response.PageResponse;
 import com.dailymate.core.security.UserPrincipal;
 import com.dailymate.grocery.dto.request.GroceryItemRequest;
 import com.dailymate.grocery.dto.response.GroceryItemResponse;
 import com.dailymate.grocery.service.GroceryComparisonService;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,16 +30,21 @@ public class GroceryComparisonController {
     }
 
     @GetMapping("/items")
-    public List<GroceryItemResponse> getItems(
+    public PageResponse<GroceryItemResponse> getItems(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String category,
-            @RequestParam(required = false) String store) {
-        return groceryComparisonService.getItems(search, category, store);
+            @RequestParam(required = false) String store,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return groceryComparisonService.getItems(search, category, store, page, size);
     }
 
     @GetMapping("/my-items")
-    public List<GroceryItemResponse> getMyItems(@AuthenticationPrincipal UserPrincipal principal) {
-        return groceryComparisonService.getMyItems(principal.user().getId());
+    public PageResponse<GroceryItemResponse> getMyItems(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return groceryComparisonService.getMyItems(principal.user().getId(), page, size);
     }
 
     @PostMapping("/items")

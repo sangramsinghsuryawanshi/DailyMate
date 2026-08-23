@@ -1,12 +1,12 @@
 package com.dailymate.events.controller;
 
+import com.dailymate.core.dto.response.PageResponse;
 import com.dailymate.core.security.UserPrincipal;
 import com.dailymate.events.dto.request.LocalEventCreateRequest;
 import com.dailymate.events.dto.request.LocalEventUpdateRequest;
 import com.dailymate.events.dto.response.LocalEventResponse;
 import com.dailymate.events.service.LocalEventService;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -31,15 +31,20 @@ public class LocalEventController {
     }
 
     @GetMapping("/events")
-    public List<LocalEventResponse> getEvents(
+    public PageResponse<LocalEventResponse> getEvents(
             @RequestParam(required = false) String category,
-            @RequestParam(required = false) String status) {
-        return localEventService.getEvents(category, status);
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return localEventService.getEvents(category, status, page, size);
     }
 
     @GetMapping("/my-events")
-    public List<LocalEventResponse> getMyEvents(@AuthenticationPrincipal UserPrincipal principal) {
-        return localEventService.getMyEvents(principal.user().getId());
+    public PageResponse<LocalEventResponse> getMyEvents(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return localEventService.getMyEvents(principal.user().getId(), page, size);
     }
 
     @PostMapping("/events")

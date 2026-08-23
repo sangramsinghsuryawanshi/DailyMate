@@ -6,5 +6,6 @@ public enum AssistantActionStatus {
     EXECUTED,
     CANCELLED,
     EXPIRED,
-    FAILED
+    FAILED,
+    SUPERSEDED
 }

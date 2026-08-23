@@ -9,5 +9,9 @@ public enum ToolDomain {
     EMERGENCY,
     EVENTS,
     JOBS,
-    REPORTS
+    LOST_FOUND,
+    COMPLAINT,
+    GROCERY,
+    REPORTS,
+    ADMIN
 }

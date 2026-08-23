@@ -1,6 +1,12 @@
+import { StatCard } from '../../design-system'
+
 export default function AdminStats({ stats, isLoading, isError }) {
   if (isLoading) {
-    return <div className="card"><p className="muted">Loading administrative statistics…</p></div>
+    return (
+      <div className="dm-empty-dashboard-box">
+        <p>Loading administrative statistics…</p>
+      </div>
+    )
   }
 
   if (isError || !stats) {
@@ -10,49 +16,67 @@ export default function AdminStats({ stats, isLoading, isError }) {
   const statCards = [
     {
       title: 'Registered Users',
-      value: stats.totalUsers,
+      value: String(stats.totalUsers),
       sub: `${stats.activeUsers} active · ${stats.suspendedUsers} suspended`,
-      badge: 'info',
+      domain: 'community',
+      icon: '👥',
+      trend: 'Users',
     },
     {
       title: 'Community Complaints',
-      value: stats.totalComplaints,
+      value: String(stats.totalComplaints),
       sub: `${stats.openComplaints} open · ${stats.inReviewComplaints} review · ${stats.resolvedComplaints} resolved`,
-      badge: 'warning',
+      domain: 'emergency',
+      icon: '🛡️',
+      trend: 'Complaints',
     },
     {
       title: 'Job Postings',
-      value: stats.totalJobs,
+      value: String(stats.totalJobs),
       sub: `${stats.openJobs} active · ${stats.closedJobs} closed`,
-      badge: 'success',
+      domain: 'expense',
+      icon: '💼',
+      trend: 'Jobs',
     },
     {
       title: 'Blood Requests',
-      value: stats.totalBloodRequests,
+      value: String(stats.totalBloodRequests),
       sub: `${stats.openBloodRequests} open · ${stats.fulfilledBloodRequests} fulfilled`,
-      badge: 'danger',
+      domain: 'health',
+      icon: '🩸',
+      trend: 'Blood',
     },
     {
       title: 'Local Events',
-      value: stats.totalEvents,
+      value: String(stats.totalEvents),
       sub: `${stats.publishedEvents} published · ${stats.cancelledEvents} cancelled`,
-      badge: 'info',
+      domain: 'community',
+      icon: '📅',
+      trend: 'Events',
     },
     {
       title: 'Lost & Found',
-      value: stats.totalLostFound,
+      value: String(stats.totalLostFound),
       sub: 'Community listings',
-      badge: 'neutral',
+      domain: 'community',
+      icon: '🔎',
+      trend: 'Lost/Found',
     },
   ]
 
   return (
-    <section className="stats-grid" aria-label="Admin overview statistics">
+    <section className="stats-grid dm-admin-stats-grid" aria-label="Admin overview statistics">
       {statCards.map((item) => (
         <article key={item.title} className="card metric-card">
-          <p className="small-muted">{item.title}</p>
-          <strong className="metric-value">{item.value}</strong>
-          <span className="small-muted">{item.sub}</span>
+          <StatCard
+            domain={item.domain}
+            label={item.title}
+            value={item.value}
+            trend={item.trend}
+            trendDirection="neutral"
+            trendLabel={item.sub}
+            icon={item.icon}
+          />
         </article>
       ))}
     </section>

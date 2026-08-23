@@ -105,7 +105,7 @@ describe('ProviderDetailPage', () => {
       hourlyRate: 70.0,
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderProviderDetailPage({ id: 'u-owner', email: 'owner@example.com' }, 'p-1')
 
     await waitFor(() => {

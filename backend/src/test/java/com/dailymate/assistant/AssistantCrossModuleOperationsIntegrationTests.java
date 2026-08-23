@@ -81,8 +81,8 @@ class AssistantCrossModuleOperationsIntegrationTests {
         mvc.perform(get("/api/v1/blood/requests")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.patientName == 'Rahul')].bloodGroup").value("O+"))
-                .andExpect(jsonPath("$[?(@.patientName == 'Rahul')].unitsNeeded").value(2));
+                .andExpect(jsonPath("$.content[?(@.patientName == 'Rahul')].bloodGroup").value("O+"))
+                .andExpect(jsonPath("$.content[?(@.patientName == 'Rahul')].unitsNeeded").value(2));
     }
 
     @Test
@@ -117,6 +117,6 @@ class AssistantCrossModuleOperationsIntegrationTests {
         mvc.perform(get("/api/v1/emergency-contacts/my-contacts")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.name == 'Priya')].phone").value("9876543210"));
+                .andExpect(jsonPath("$.content[?(@.name == 'Priya')].phone").value("9876543210"));
     }
 }

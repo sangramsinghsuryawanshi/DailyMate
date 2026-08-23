@@ -44,7 +44,8 @@ class JobPostControllerIntegrationTests {
     void anonymousUsersHaveAccessToPublicPostsOnly() throws Exception {
         // Public posts feed allows anonymous
         mvc.perform(get("/api/v1/jobs/posts"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
 
         // My posts requires authentication
         mvc.perform(get("/api/v1/jobs/my-posts"))
@@ -86,17 +87,17 @@ class JobPostControllerIntegrationTests {
         // Search by title
         mvc.perform(get("/api/v1/jobs/posts").param("search", "Java"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].title").value("Senior Java Developer"));
+                .andExpect(jsonPath("$.content[0].title").value("Senior Java Developer"));
 
         // Filter by category
         mvc.perform(get("/api/v1/jobs/posts").param("category", "Retail"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].title").value("Store Cashier"));
+                .andExpect(jsonPath("$.content[0].title").value("Store Cashier"));
 
         // Filter by type
         mvc.perform(get("/api/v1/jobs/posts").param("type", "Part-time"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].title").value("Store Cashier"));
+                .andExpect(jsonPath("$.content[0].title").value("Store Cashier"));
     }
 
     @Test
@@ -123,8 +124,8 @@ class JobPostControllerIntegrationTests {
         mvc.perform(get("/api/v1/jobs/my-posts")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(postId))
-                .andExpect(jsonPath("$[0].companyName").value("CityGroup"));
+                .andExpect(jsonPath("$.content[0].id").value(postId))
+                .andExpect(jsonPath("$.content[0].companyName").value("CityGroup"));
 
         // Update job details and close status
         mvc.perform(patch("/api/v1/jobs/posts/{id}", postId)
@@ -139,12 +140,12 @@ class JobPostControllerIntegrationTests {
         // Closed job is omitted from default public feed (which defaults to OPEN)
         mvc.perform(get("/api/v1/jobs/posts"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.id == '" + postId + "')]").doesNotExist());
+                .andExpect(jsonPath("$.content[?(@.id == '" + postId + "')]").doesNotExist());
 
         // But accessible with status=ALL
         mvc.perform(get("/api/v1/jobs/posts").param("status", "ALL"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.id == '" + postId + "')]").exists());
+                .andExpect(jsonPath("$.content[?(@.id == '" + postId + "')]").exists());
 
         // Delete job
         mvc.perform(delete("/api/v1/jobs/posts/{id}", postId)
@@ -155,7 +156,7 @@ class JobPostControllerIntegrationTests {
         mvc.perform(get("/api/v1/jobs/my-posts")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.id == '" + postId + "')]").doesNotExist());
+                .andExpect(jsonPath("$.content[?(@.id == '" + postId + "')]").doesNotExist());
     }
 
     @Test

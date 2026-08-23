@@ -1,7 +1,9 @@
 package com.dailymate.events.service;
 
+import com.dailymate.core.dto.response.PageResponse;
 import com.dailymate.core.exception.BadRequestException;
 import com.dailymate.core.exception.NotFoundException;
+import com.dailymate.core.util.PaginationUtils;
 import com.dailymate.events.dto.request.LocalEventCreateRequest;
 import com.dailymate.events.dto.request.LocalEventUpdateRequest;
 import com.dailymate.events.dto.response.LocalEventResponse;
@@ -9,6 +11,9 @@ import com.dailymate.events.entity.EventStatus;
 import com.dailymate.events.entity.LocalEvent;
 import com.dailymate.events.repository.LocalEventRepository;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +24,21 @@ public class LocalEventService {
 
     public LocalEventService(LocalEventRepository events) {
         this.events = events;
+    }
+
+    public PageResponse<LocalEventResponse> getEvents(String category, String status, int page, int size) {
+        String normalizedCategory = (category != null && !category.trim().isEmpty() && !category.equalsIgnoreCase("ALL"))
+                ? category.trim()
+                : null;
+        String normalizedStatus = (status != null && !status.trim().isEmpty() && !status.equalsIgnoreCase("ALL"))
+                ? status.trim().toUpperCase()
+                : null;
+
+        Sort sort = Sort.by(Sort.Order.asc("eventDate"), Sort.Order.asc("id"));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sort);
+        Page<LocalEventResponse> responsePage = events.findFiltered(normalizedCategory, normalizedStatus, pageable)
+                .map(this::toResponse);
+        return PageResponse.from(responsePage);
     }
 
     public List<LocalEventResponse> getEvents(String category, String status) {
@@ -41,6 +61,14 @@ public class LocalEventService {
         }
 
         return result.stream().map(this::toResponse).toList();
+    }
+
+    public PageResponse<LocalEventResponse> getMyEvents(String userId, int page, int size) {
+        Sort sort = Sort.by(Sort.Order.asc("eventDate"), Sort.Order.asc("id"));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sort);
+        Page<LocalEventResponse> responsePage = events.findByUserId(userId, pageable)
+                .map(this::toResponse);
+        return PageResponse.from(responsePage);
     }
 
     public List<LocalEventResponse> getMyEvents(String userId) {
@@ -68,11 +96,9 @@ public class LocalEventService {
         LocalEvent event = events.findByIdAndUserId(eventId, userId)
                 .orElseThrow(() -> new NotFoundException("Event not found"));
 
-        EventStatus currentStatus = EventStatus.fromString(event.getStatus());
         EventStatus targetStatus = EventStatus.fromString(request.status());
-
-        if (targetStatus != null && currentStatus != null && !currentStatus.canTransitionTo(targetStatus)) {
-            throw new BadRequestException("Invalid status transition from " + currentStatus + " to " + targetStatus);
+        if (targetStatus == null) {
+            throw new BadRequestException("Invalid event status: " + request.status());
         }
 
         event.setTitle(request.title().trim());
@@ -80,9 +106,7 @@ public class LocalEventService {
         event.setLocation(request.location().trim());
         event.setEventDate(request.eventDate());
         event.setDescription(request.description().trim());
-        if (targetStatus != null) {
-            event.setStatus(targetStatus.name());
-        }
+        event.setStatus(targetStatus.name());
 
         return toResponse(events.save(event));
     }

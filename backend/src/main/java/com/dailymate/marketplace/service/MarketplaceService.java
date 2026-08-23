@@ -1,7 +1,9 @@
 package com.dailymate.marketplace.service;
 
+import com.dailymate.core.dto.response.PageResponse;
 import com.dailymate.core.exception.ForbiddenException;
 import com.dailymate.core.exception.NotFoundException;
+import com.dailymate.core.util.PaginationUtils;
 import com.dailymate.marketplace.dto.request.ServiceProviderRequest;
 import com.dailymate.marketplace.dto.response.ServiceProviderResponse;
 import com.dailymate.marketplace.entity.ServiceProvider;
@@ -10,6 +12,9 @@ import com.dailymate.user.entity.User;
 import com.dailymate.user.entity.UserRole;
 import java.math.BigDecimal;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +25,16 @@ public class MarketplaceService {
 
     public MarketplaceService(ServiceProviderRepository providers) {
         this.providers = providers;
+    }
+
+    public PageResponse<ServiceProviderResponse> getProviders(String search, String category, int page, int size) {
+        String cleanSearch = (search != null && !search.trim().isBlank()) ? search.trim() : null;
+        String cleanCategory = (category != null && !category.trim().isBlank() && !category.equalsIgnoreCase("all")) ? category.trim() : null;
+        Sort sort = Sort.by(Sort.Order.asc("name"), Sort.Order.asc("id"));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sort);
+        Page<ServiceProviderResponse> responsePage = providers.findFiltered(cleanSearch, cleanCategory, pageable)
+                .map(this::toResponse);
+        return PageResponse.from(responsePage);
     }
 
     public List<ServiceProviderResponse> getProviders() {
@@ -93,6 +108,15 @@ public class MarketplaceService {
         providers.saveAll(List.of(electrician, plumber, mechanic));
     }
 
+    private void verifyOwnership(ServiceProvider provider, User currentUser) {
+        if (currentUser.getRole() == UserRole.ADMIN) {
+            return;
+        }
+        if (provider.getUserId() == null || !provider.getUserId().equals(currentUser.getId())) {
+            throw new ForbiddenException("You do not have permission to modify this provider");
+        }
+    }
+
     private void applyChanges(ServiceProvider provider, ServiceProviderRequest request) {
         provider.setName(request.name().trim());
         provider.setCategory(request.category().trim());
@@ -108,15 +132,6 @@ public class MarketplaceService {
                 .orElseThrow(() -> new NotFoundException("Service provider not found"));
     }
 
-    private void verifyOwnership(ServiceProvider provider, User currentUser) {
-        if (currentUser.getRole() == UserRole.ADMIN) {
-            return;
-        }
-        if (provider.getUserId() == null || !provider.getUserId().equals(currentUser.getId())) {
-            throw new ForbiddenException("You do not have permission to modify this provider");
-        }
-    }
-
     private ServiceProviderResponse toResponse(ServiceProvider provider) {
         return new ServiceProviderResponse(
                 provider.getId(),
@@ -128,6 +143,7 @@ public class MarketplaceService {
                 provider.getPhone(),
                 provider.getEmail(),
                 provider.getHourlyRate(),
-                provider.getCreatedAt());
+                provider.getCreatedAt()
+        );
     }
 }

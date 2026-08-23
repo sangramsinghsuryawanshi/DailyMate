@@ -2,15 +2,14 @@ import apiClient from '../../services/apiClient'
 
 // Blood Requests
 export const getBloodRequests = (params = {}) => {
-  const queryParams = new URLSearchParams()
-  if (params.bloodGroup) queryParams.append('bloodGroup', params.bloodGroup)
-  if (params.status) queryParams.append('status', params.status)
-  const queryString = queryParams.toString()
-  return apiClient.get(`/blood/requests${queryString ? `?${queryString}` : ''}`).then((res) => res.data)
+  const query = typeof params === 'object' ? params : {}
+  return apiClient.get('/blood/requests', { params: query }).then((res) => res.data)
 }
 
-export const getMyBloodRequests = () =>
-  apiClient.get('/blood/my-requests').then((res) => res.data)
+export const getMyBloodRequests = (params = {}) => {
+  const query = typeof params === 'object' ? params : {}
+  return apiClient.get('/blood/my-requests', { params: query }).then((res) => res.data)
+}
 
 export const createBloodRequest = (payload) =>
   apiClient.post('/blood/requests', payload).then((res) => res.data)
@@ -22,8 +21,10 @@ export const deleteBloodRequest = (id) =>
   apiClient.delete(`/blood/requests/${id}`)
 
 // Donation Centers
-export const getDonationCenters = () =>
-  apiClient.get('/blood/centers').then((res) => res.data)
+export const getDonationCenters = (params = {}) => {
+  const query = typeof params === 'object' ? params : {}
+  return apiClient.get('/blood/centers', { params: query }).then((res) => res.data)
+}
 
 export const createDonationCenter = (payload) =>
   apiClient.post('/blood/centers', payload).then((res) => res.data)

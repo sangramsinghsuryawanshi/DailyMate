@@ -40,6 +40,12 @@ public class AssistantBulkOperation {
     @Column(name = "preview_hash", nullable = false, length = 128)
     private String previewHash;
 
+    @Column(name = "confirmation_phrase", length = 120)
+    private String confirmationPhrase;
+
+    @Column(name = "admin_reason", length = 500)
+    private String adminReason;
+
     @Column(name = "total_rows", nullable = false)
     private int totalRows;
 
@@ -68,11 +74,20 @@ public class AssistantBulkOperation {
     @Column(name = "payload_json", columnDefinition = "LONGTEXT")
     private String payloadJson;
 
+    @Column(name = "target_snapshot_json", columnDefinition = "LONGTEXT")
+    private String targetSnapshotJson;
+
     @Column(name = "result_json", columnDefinition = "LONGTEXT")
     private String resultJson;
 
+    @Column(name = "dry_run", nullable = false)
+    private boolean dryRun = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
+
+    @Column(name = "expires_at")
+    private Instant expiresAt;
 
     @Column(name = "confirmed_at")
     private Instant confirmedAt;
@@ -105,6 +120,12 @@ public class AssistantBulkOperation {
     public String getPreviewHash() { return previewHash; }
     public void setPreviewHash(String previewHash) { this.previewHash = previewHash; }
 
+    public String getConfirmationPhrase() { return confirmationPhrase; }
+    public void setConfirmationPhrase(String confirmationPhrase) { this.confirmationPhrase = confirmationPhrase; }
+
+    public String getAdminReason() { return adminReason; }
+    public void setAdminReason(String adminReason) { this.adminReason = adminReason; }
+
     public int getTotalRows() { return totalRows; }
     public void setTotalRows(int totalRows) { this.totalRows = totalRows; }
 
@@ -132,11 +153,20 @@ public class AssistantBulkOperation {
     public String getPayloadJson() { return payloadJson; }
     public void setPayloadJson(String payloadJson) { this.payloadJson = payloadJson; }
 
+    public String getTargetSnapshotJson() { return targetSnapshotJson; }
+    public void setTargetSnapshotJson(String targetSnapshotJson) { this.targetSnapshotJson = targetSnapshotJson; }
+
     public String getResultJson() { return resultJson; }
     public void setResultJson(String resultJson) { this.resultJson = resultJson; }
 
+    public boolean isDryRun() { return dryRun; }
+    public void setDryRun(boolean dryRun) { this.dryRun = dryRun; }
+
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+    public Instant getExpiresAt() { return expiresAt; }
+    public void setExpiresAt(Instant expiresAt) { this.expiresAt = expiresAt; }
 
     public Instant getConfirmedAt() { return confirmedAt; }
     public void setConfirmedAt(Instant confirmedAt) { this.confirmedAt = confirmedAt; }

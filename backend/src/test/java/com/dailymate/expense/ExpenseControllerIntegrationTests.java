@@ -67,7 +67,7 @@ class ExpenseControllerIntegrationTests {
     }
 
     @Test
-    void createsAndListsExpensesInDescendingDateOrderWithExactPrecision() throws Exception {
+    void createsAndListsExpensesWithServerPaginationAndStableSorting() throws Exception {
         String token = registerAndGetToken("chrono-expenses@example.com");
 
         // 1. Post expense on 2026-08-10 (Amount: 1234.56)
@@ -100,20 +100,65 @@ class ExpenseControllerIntegrationTests {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.amount").value(75.25));
 
-        // 4. Verify descending date order: 2026-08-20 -> 2026-08-15 -> 2026-08-10 and exact amounts
+        // 4. Verify default pagination & descending date order: 2026-08-20 -> 2026-08-15 -> 2026-08-10
         mvc.perform(get("/api/v1/expenses")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(3))
-                .andExpect(jsonPath("$[0].description").value("Weekly Market Run"))
-                .andExpect(jsonPath("$[0].spentOn").value("2026-08-20"))
-                .andExpect(jsonPath("$[0].amount").value(500.00))
-                .andExpect(jsonPath("$[1].description").value("Lunch with colleagues"))
-                .andExpect(jsonPath("$[1].spentOn").value("2026-08-15"))
-                .andExpect(jsonPath("$[1].amount").value(75.25))
-                .andExpect(jsonPath("$[2].description").value("Electricity Bill"))
-                .andExpect(jsonPath("$[2].spentOn").value("2026-08-10"))
-                .andExpect(jsonPath("$[2].amount").value(1234.56));
+                .andExpect(jsonPath("$.content.length()").value(3))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20))
+                .andExpect(jsonPath("$.first").value(true))
+                .andExpect(jsonPath("$.last").value(true))
+                .andExpect(jsonPath("$.content[0].description").value("Weekly Market Run"))
+                .andExpect(jsonPath("$.content[0].spentOn").value("2026-08-20"))
+                .andExpect(jsonPath("$.content[0].amount").value(500.00))
+                .andExpect(jsonPath("$.content[1].description").value("Lunch with colleagues"))
+                .andExpect(jsonPath("$.content[1].spentOn").value("2026-08-15"))
+                .andExpect(jsonPath("$.content[1].amount").value(75.25))
+                .andExpect(jsonPath("$.content[2].description").value("Electricity Bill"))
+                .andExpect(jsonPath("$.content[2].spentOn").value("2026-08-10"))
+                .andExpect(jsonPath("$.content[2].amount").value(1234.56));
+
+        // 5. Test custom page size (size=2)
+        mvc.perform(get("/api/v1/expenses?page=0&size=2")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.hasPrevious").value(false));
+
+        // 6. Test second page (page=1, size=2)
+        mvc.perform(get("/api/v1/expenses?page=1&size=2")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.first").value(false))
+                .andExpect(jsonPath("$.last").value(true))
+                .andExpect(jsonPath("$.content[0].description").value("Electricity Bill"));
+    }
+
+    @Test
+    void validatesPaginationBounds() throws Exception {
+        String token = registerAndGetToken("bounds-exp@example.com");
+
+        // Negative page -> 400 Bad Request
+        mvc.perform(get("/api/v1/expenses?page=-1&size=20")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+
+        // Zero size -> 400 Bad Request
+        mvc.perform(get("/api/v1/expenses?page=0&size=0")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+
+        // Oversized size (> 100) -> 400 Bad Request
+        mvc.perform(get("/api/v1/expenses?page=0&size=101")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -140,7 +185,8 @@ class ExpenseControllerIntegrationTests {
         mvc.perform(get("/api/v1/expenses")
                         .header("Authorization", "Bearer " + tokenUserB))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0));
 
         // User B cannot PATCH User A's expense -> 404
         ExpenseEntryRequest updateAttempt = new ExpenseEntryRequest(
@@ -239,6 +285,7 @@ class ExpenseControllerIntegrationTests {
         mvc.perform(get("/api/v1/expenses")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0));
     }
 }

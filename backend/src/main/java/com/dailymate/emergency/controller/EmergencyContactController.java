@@ -1,11 +1,11 @@
 package com.dailymate.emergency.controller;
 
+import com.dailymate.core.dto.response.PageResponse;
 import com.dailymate.core.security.UserPrincipal;
 import com.dailymate.emergency.dto.request.EmergencyContactRequest;
 import com.dailymate.emergency.dto.response.EmergencyContactResponse;
 import com.dailymate.emergency.service.EmergencyContactService;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,15 +30,20 @@ public class EmergencyContactController {
     }
 
     @GetMapping("/contacts")
-    public List<EmergencyContactResponse> getPublicContacts(@RequestParam(required = false) String category) {
-        return emergencyContactService.getPublicContacts(category);
+    public PageResponse<EmergencyContactResponse> getPublicContacts(
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return emergencyContactService.getPublicContacts(category, page, size);
     }
 
     @GetMapping("/my-contacts")
-    public List<EmergencyContactResponse> getMyContacts(
+    public PageResponse<EmergencyContactResponse> getMyContacts(
             @AuthenticationPrincipal UserPrincipal principal,
-            @RequestParam(required = false) String category) {
-        return emergencyContactService.getMyContacts(principal.user().getId(), category);
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return emergencyContactService.getMyContacts(principal.user().getId(), category, page, size);
     }
 
     @PostMapping("/contacts")

@@ -53,7 +53,8 @@ class EmergencyContactControllerIntegrationTests {
     void anonymousCanReadPublicDirectoryButCannotAccessPrivateEndpointsOrMutate() throws Exception {
         // Public feed -> 200 OK
         mvc.perform(get("/api/v1/emergency-contacts/contacts"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
 
         // My contacts -> 401 Unauthorized
         mvc.perform(get("/api/v1/emergency-contacts/my-contacts"))
@@ -96,7 +97,7 @@ class EmergencyContactControllerIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode array = objectMapper.readTree(publicFeed);
+        JsonNode array = objectMapper.readTree(publicFeed).get("content");
         assertTrue(array.size() >= 1);
         for (JsonNode item : array) {
             assertEquals("Ambulance", item.get("category").asText());
@@ -164,7 +165,7 @@ class EmergencyContactControllerIntegrationTests {
         mvc.perform(get("/api/v1/emergency-contacts/my-contacts")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Dr. Alok Verma"));
+                .andExpect(jsonPath("$.content[0].name").value("Dr. Alok Verma"));
 
         // Update contact
         EmergencyContactRequest updateReq = new EmergencyContactRequest(
@@ -211,7 +212,7 @@ class EmergencyContactControllerIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode myContactsArray = objectMapper.readTree(myContactsB);
+        JsonNode myContactsArray = objectMapper.readTree(myContactsB).get("content");
         for (JsonNode item : myContactsArray) {
             assertEquals(false, contactId.equals(item.get("id").asText()));
         }

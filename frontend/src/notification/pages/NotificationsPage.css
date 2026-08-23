@@ -1,0 +1,81 @@
+.dm-notifications-page {
+  padding: var(--dm-space-6, 1.5rem) 0 var(--dm-space-12, 3rem) 0;
+}
+
+.dm-notifications-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--dm-space-4, 1rem);
+  margin-bottom: var(--dm-space-6, 1.5rem);
+}
+
+@media (min-width: 1024px) {
+  .dm-notifications-stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.dm-notifications-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--dm-space-3, 0.75rem);
+  margin-bottom: var(--dm-space-5, 1.25rem);
+  padding: var(--dm-space-4, 1rem);
+  background-color: var(--dm-color-surface);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-lg, 16px);
+}
+
+.dm-notification-items-feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dm-space-3, 0.75rem);
+}
+
+.dm-notification-card {
+  background-color: var(--dm-color-surface);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-lg, 16px);
+  padding: var(--dm-space-4, 1rem) var(--dm-space-5, 1.25rem);
+  box-shadow: var(--dm-shadow-card);
+  transition: all var(--dm-transition-normal);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dm-space-3, 0.75rem);
+}
+
+.dm-notification-card.unread {
+  border-left: 4px solid var(--dm-color-primary);
+  background-color: var(--dm-color-surface);
+}
+
+.dm-notification-card:hover {
+  border-color: var(--dm-color-border-hover);
+  box-shadow: var(--dm-shadow-card-hover);
+}
+
+.dm-notification-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--dm-space-2, 0.5rem);
+}
+
+.dm-notification-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--dm-color-text);
+}
+
+.dm-notification-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--dm-space-2, 0.5rem);
+  padding-top: var(--dm-space-2, 0.5rem);
+  border-top: 1px solid var(--dm-color-border);
+  flex-wrap: wrap;
+}

@@ -82,7 +82,7 @@ describe('NotificationsPage', () => {
       size: 20,
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderNotificationsPage()
 
     await waitFor(() => {
@@ -118,7 +118,7 @@ describe('NotificationsPage', () => {
     })
     updateNotificationMock.mockResolvedValue({})
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderNotificationsPage()
 
     await waitFor(() => {
@@ -158,7 +158,7 @@ describe('NotificationsPage', () => {
     })
     markAllReadMock.mockResolvedValue({})
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderNotificationsPage()
 
     await waitFor(() => {
@@ -191,7 +191,7 @@ describe('NotificationsPage', () => {
     })
     deleteNotificationMock.mockResolvedValue({})
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderNotificationsPage()
 
     await waitFor(() => {

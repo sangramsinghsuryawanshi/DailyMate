@@ -77,7 +77,7 @@ describe('CommunityComplaintsPage', () => {
       },
     ])
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderCommunityComplaintsPage()
 
     await waitFor(() => {
@@ -104,7 +104,7 @@ describe('CommunityComplaintsPage', () => {
       status: 'OPEN',
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderCommunityComplaintsPage()
 
     await waitFor(() => {
@@ -141,7 +141,7 @@ describe('CommunityComplaintsPage', () => {
     ])
     deleteComplaintMock.mockResolvedValue({})
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderCommunityComplaintsPage()
 
     await waitFor(() => {

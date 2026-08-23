@@ -6,11 +6,18 @@ import { confirmAssistantAction, cancelAssistantAction } from '../services/assis
 export default function AssistantActionCard({ proposal }) {
   const queryClient = useQueryClient()
   const isExpired = proposal?.expiresAt && new Date(proposal.expiresAt) < new Date()
-  const initialStatus = isExpired ? 'EXPIRED' : (proposal?.status || 'PENDING')
+  const computedStatus = (proposal?.status === 'EXECUTED' || proposal?.status === 'CANCELLED' || proposal?.status === 'FAILED')
+    ? proposal.status
+    : (isExpired ? 'EXPIRED' : (proposal?.status || 'PENDING'))
 
-  const [actionState, setActionState] = useState(initialStatus)
+  const [actionState, setActionState] = useState(computedStatus)
   const [resultMessage, setResultMessage] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+
+  // Keep state synchronized if props change (e.g. on navigation or refetch)
+  if (proposal?.status && (proposal.status === 'EXECUTED' || proposal.status === 'CANCELLED') && actionState !== proposal.status) {
+    setActionState(proposal.status)
+  }
 
   // Stable idempotency key tied to the proposal instance
   const getIdempotencyKey = () => {
@@ -28,7 +35,7 @@ export default function AssistantActionCard({ proposal }) {
       setErrorMsg('')
 
       // Invalidate relevant domain query caches across all 8 modules
-      if (proposal.actionType === 'RECORD_EXPENSE' || proposal.actionType === 'DELETE_EXPENSE') {
+      if (proposal.actionType === 'RECORD_EXPENSE' || proposal.actionType === 'DELETE_EXPENSE' || proposal.actionType === 'BULK_RECORD_EXPENSES') {
         queryClient.invalidateQueries({ queryKey: ['expenses'] })
       } else if (proposal.actionType === 'CREATE_REMINDER' || proposal.actionType === 'DELETE_REMINDER') {
         queryClient.invalidateQueries({ queryKey: ['medicine-reminders'] })
@@ -48,6 +55,7 @@ export default function AssistantActionCard({ proposal }) {
         queryClient.invalidateQueries({ queryKey: ['job-posts'] })
       }
       queryClient.invalidateQueries({ queryKey: ['assistant-conversations'] })
+      queryClient.invalidateQueries({ queryKey: ['assistant-messages'] })
     },
     onError: (err) => {
       setErrorMsg(err.response?.data?.detail || err.response?.data?.message || 'Failed to execute action.')
@@ -60,6 +68,7 @@ export default function AssistantActionCard({ proposal }) {
       setActionState('CANCELLED')
       setErrorMsg('')
       queryClient.invalidateQueries({ queryKey: ['assistant-conversations'] })
+      queryClient.invalidateQueries({ queryKey: ['assistant-messages'] })
     },
     onError: (err) => {
       setErrorMsg(err.response?.data?.detail || err.response?.data?.message || 'Failed to cancel action.')

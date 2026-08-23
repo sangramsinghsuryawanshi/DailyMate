@@ -1,8 +1,14 @@
 import apiClient from '../../services/apiClient'
 
-export const getLostFoundPosts = () => apiClient.get('/lost-found/posts').then((response) => response.data)
+export const getLostFoundPosts = (params = {}) => {
+  const query = typeof params === 'object' ? params : {}
+  return apiClient.get('/lost-found/posts', { params: query }).then((response) => response.data)
+}
 
-export const getMyLostFoundPosts = () => apiClient.get('/lost-found/my-posts').then((response) => response.data)
+export const getMyLostFoundPosts = (params = {}) => {
+  const query = typeof params === 'object' ? params : {}
+  return apiClient.get('/lost-found/my-posts', { params: query }).then((response) => response.data)
+}
 
 export const createLostFoundPost = (payload) => apiClient.post('/lost-found/posts', payload).then((response) => response.data)
 

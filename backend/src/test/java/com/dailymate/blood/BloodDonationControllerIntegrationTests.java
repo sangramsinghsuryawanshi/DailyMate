@@ -48,11 +48,13 @@ class BloodDonationControllerIntegrationTests {
     void anonymousCanReadPublicRequestsAndCentersButCannotAccessPrivateEndpointsOrMutate() throws Exception {
         // Public feed -> 200 OK
         mvc.perform(get("/api/v1/blood/requests"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
 
         // Public centers -> 200 OK
         mvc.perform(get("/api/v1/blood/centers"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
 
         // My requests -> 401 Unauthorized
         mvc.perform(get("/api/v1/blood/my-requests"))
@@ -79,7 +81,7 @@ class BloodDonationControllerIntegrationTests {
     }
 
     @Test
-    void publicFeedSupportsBloodGroupAndStatusFiltering() throws Exception {
+    void publicFeedSupportsBloodGroupAndStatusFilteringWithPagination() throws Exception {
         String token = registerAndGetToken("filter-blood@example.com");
 
         BloodRequestCreateRequest reqO = new BloodRequestCreateRequest(
@@ -106,7 +108,7 @@ class BloodDonationControllerIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode oArray = objectMapper.readTree(oFeed);
+        JsonNode oArray = objectMapper.readTree(oFeed).get("content");
         assertTrue(oArray.size() >= 1);
         for (JsonNode item : oArray) {
             assertEquals("O+", item.get("bloodGroup").asText());
@@ -119,7 +121,7 @@ class BloodDonationControllerIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode openArray = objectMapper.readTree(openFeed);
+        JsonNode openArray = objectMapper.readTree(openFeed).get("content");
         assertTrue(openArray.size() >= 2);
     }
 
@@ -150,7 +152,7 @@ class BloodDonationControllerIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode myReqArray = objectMapper.readTree(myRequestsB);
+        JsonNode myReqArray = objectMapper.readTree(myRequestsB).get("content");
         for (JsonNode item : myReqArray) {
             assertEquals(false, requestId.equals(item.get("id").asText()));
         }
@@ -289,7 +291,7 @@ class BloodDonationControllerIntegrationTests {
 
         mvc.perform(get("/api/v1/blood/centers"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("City Blood Bank"));
+                .andExpect(jsonPath("$.content[0].name").value("City Blood Bank"));
 
         DonationCenterRequest updateReq = new DonationCenterRequest(
                 "City Blood Bank West", "West End", "+1-555-0222", "Weekend donation support");

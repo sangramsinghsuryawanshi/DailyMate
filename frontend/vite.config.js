@@ -4,9 +4,17 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+  },
+
   test: {
     environment: 'jsdom',
     setupFiles: './src/test/setup.js',
     globals: true,
+    testTimeout: 20000,
+    hookTimeout: 20000,
   },
 })

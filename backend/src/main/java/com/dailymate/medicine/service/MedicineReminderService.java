@@ -1,11 +1,16 @@
 package com.dailymate.medicine.service;
 
+import com.dailymate.core.dto.response.PageResponse;
 import com.dailymate.core.exception.NotFoundException;
+import com.dailymate.core.util.PaginationUtils;
 import com.dailymate.medicine.dto.request.MedicineReminderRequest;
 import com.dailymate.medicine.dto.response.MedicineReminderResponse;
 import com.dailymate.medicine.entity.MedicineReminder;
 import com.dailymate.medicine.repository.MedicineReminderRepository;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +21,14 @@ public class MedicineReminderService {
 
     public MedicineReminderService(MedicineReminderRepository reminders) {
         this.reminders = reminders;
+    }
+
+    public PageResponse<MedicineReminderResponse> getReminders(String userId, int page, int size) {
+        Sort sort = Sort.by(Sort.Order.asc("remindAt"), Sort.Order.asc("id"));
+        Pageable pageable = PaginationUtils.createPageable(page, size, sort);
+        Page<MedicineReminderResponse> responsePage = reminders.findByUserId(userId, pageable)
+                .map(this::toResponse);
+        return PageResponse.from(responsePage);
     }
 
     public List<MedicineReminderResponse> getReminders(String userId) {
@@ -68,6 +81,7 @@ public class MedicineReminderService {
                 reminder.getNotes(),
                 reminder.isActive(),
                 reminder.getCreatedAt(),
-                reminder.getUpdatedAt());
+                reminder.getUpdatedAt()
+        );
     }
 }

@@ -46,7 +46,8 @@ class LostFoundControllerIntegrationTests {
     void anonymousCanReadPublicPostsButCannotAccessPrivateEndpointsOrMutate() throws Exception {
         // Public feed -> 200 OK
         mvc.perform(get("/api/v1/lost-found/posts"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
 
         // My posts -> 401 Unauthorized
         mvc.perform(get("/api/v1/lost-found/my-posts"))
@@ -113,7 +114,7 @@ class LostFoundControllerIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        JsonNode feed = objectMapper.readTree(feedBody);
+        JsonNode feed = objectMapper.readTree(feedBody).get("content");
         assertTrue(feed.isArray());
         assertTrue(feed.size() >= 2);
     }
@@ -144,7 +145,7 @@ class LostFoundControllerIntegrationTests {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        JsonNode myPostsArray = objectMapper.readTree(myPostsB);
+        JsonNode myPostsArray = objectMapper.readTree(myPostsB).get("content");
         for (JsonNode item : myPostsArray) {
             assertEquals(false, postId.equals(item.get("id").asText()));
         }
@@ -187,7 +188,7 @@ class LostFoundControllerIntegrationTests {
         mvc.perform(get("/api/v1/lost-found/my-posts")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(postId));
+                .andExpect(jsonPath("$.content[0].id").value(postId));
 
         // Update post
         LostItemPostRequest updateReq = new LostItemPostRequest(
@@ -209,7 +210,7 @@ class LostFoundControllerIntegrationTests {
         mvc.perform(get("/api/v1/lost-found/my-posts")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.content.length()").value(0));
     }
 
     @Test

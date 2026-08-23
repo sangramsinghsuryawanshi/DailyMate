@@ -1,0 +1,87 @@
+.dm-quick-action-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--dm-space-3, 0.75rem);
+}
+
+@media (min-width: 640px) {
+  .dm-quick-action-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.dm-quick-action-item {
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-3, 0.75rem);
+  padding: var(--dm-space-3, 0.75rem) var(--dm-space-4, 1rem);
+  background-color: var(--dm-color-surface);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-md, 12px);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dm-transition-fast), background-color var(--dm-transition-fast), transform var(--dm-transition-fast);
+  min-height: 56px;
+  width: 100%;
+}
+
+.dm-quick-action-item:hover {
+  background-color: var(--dm-color-surface-hover);
+  border-color: var(--dm-color-border-hover);
+  transform: translateY(-1px);
+}
+
+.dm-quick-action-item:focus-visible {
+  outline: none;
+  box-shadow: var(--dm-shadow-focus);
+}
+
+.dm-quick-action-item__icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.dm-quick-action-item__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.dm-quick-action-item__title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--dm-color-text);
+}
+
+.dm-quick-action-item__description {
+  font-size: 0.75rem;
+  color: var(--dm-color-text-soft);
+  margin-top: 0.1rem;
+}
+
+.dm-quick-action-item__arrow {
+  color: var(--dm-color-text-soft);
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+/* Domain Accents */
+.dm-quick-action-item--expense {
+  border-left: 4px solid var(--dm-domain-expense);
+}
+.dm-quick-action-item--health {
+  border-left: 4px solid var(--dm-domain-health);
+}
+.dm-quick-action-item--emergency {
+  border-left: 4px solid var(--dm-domain-emergency);
+}
+.dm-quick-action-item--community {
+  border-left: 4px solid var(--dm-domain-community);
+}
+.dm-quick-action-item--marketplace {
+  border-left: 4px solid var(--dm-domain-marketplace);
+}
+.dm-quick-action-item--ai {
+  border-left: 4px solid var(--dm-domain-ai);
+}

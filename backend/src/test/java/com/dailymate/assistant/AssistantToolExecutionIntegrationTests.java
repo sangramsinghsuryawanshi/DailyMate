@@ -95,9 +95,9 @@ class AssistantToolExecutionIntegrationTests {
         mvc.perform(get("/api/v1/expenses")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].amount").value(50.00))
-                .andExpect(jsonPath("$[0].description").value("Khichadi"))
-                .andExpect(jsonPath("$[0].category").value("Food & Dining"));
+                .andExpect(jsonPath("$.content[0].amount").value(50.00))
+                .andExpect(jsonPath("$.content[0].description").value("Khichadi"))
+                .andExpect(jsonPath("$.content[0].category").value("Food & Dining"));
     }
 
     @Test
@@ -193,8 +193,8 @@ class AssistantToolExecutionIntegrationTests {
         mvc.perform(get("/api/v1/expenses")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].category").value("Utilities"))
-                .andExpect(jsonPath("$[0].amount").value(750.00));
+                .andExpect(jsonPath("$.content[0].category").value("Utilities"))
+                .andExpect(jsonPath("$.content[0].amount").value(750.00));
     }
 
     @Test
@@ -224,8 +224,8 @@ class AssistantToolExecutionIntegrationTests {
         mvc.perform(get("/api/v1/medicine-reminders")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Amoxicillin"))
-                .andExpect(jsonPath("$[0].dosage").value("250mg"));
+                .andExpect(jsonPath("$.content[0].name").value("Amoxicillin"))
+                .andExpect(jsonPath("$.content[0].dosage").value("250mg"));
     }
 
     @Test
@@ -269,7 +269,7 @@ class AssistantToolExecutionIntegrationTests {
         mvc.perform(get("/api/v1/expenses")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+                .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @Test
@@ -389,8 +389,8 @@ class AssistantToolExecutionIntegrationTests {
             mvc.perform(get("/api/v1/expenses")
                             .header("Authorization", "Bearer " + token))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.length()").value(1))
-                    .andExpect(jsonPath("$[0].amount").value(600.00));
+                    .andExpect(jsonPath("$.totalElements").value(1))
+                    .andExpect(jsonPath("$.content[0].amount").value(600.00));
         } finally {
             executor.shutdown();
         }

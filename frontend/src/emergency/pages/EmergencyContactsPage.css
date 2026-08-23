@@ -1,0 +1,338 @@
+.dm-emergency-page {
+  padding: var(--dm-space-6, 1.5rem) 0 var(--dm-space-12, 3rem) 0;
+}
+
+/* ===================================================================
+   NATIONAL HOTLINES DIRECT STRIP
+   =================================================================== */
+.dm-hotlines-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--dm-space-3, 0.75rem);
+  margin-bottom: var(--dm-space-6, 1.5rem);
+}
+
+@media (min-width: 768px) {
+  .dm-hotlines-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--dm-space-4, 1rem);
+  }
+}
+
+.dm-hotline-card {
+  background-color: var(--dm-color-surface);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-md, 12px);
+  padding: var(--dm-space-4, 1rem);
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-3, 0.75rem);
+  text-decoration: none;
+  transition: all var(--dm-transition-fast);
+  color: var(--dm-color-text);
+}
+
+.dm-hotline-card:hover {
+  border-color: var(--dm-color-danger);
+  transform: translateY(-2px);
+  box-shadow: var(--dm-shadow-md);
+}
+
+.dm-hotline-icon {
+  font-size: 1.75rem;
+}
+
+.dm-hotline-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.dm-hotline-info strong {
+  font-size: 0.875rem;
+  color: var(--dm-color-text);
+}
+
+.dm-hotline-desc {
+  font-size: 0.75rem;
+  color: var(--dm-color-text-soft);
+}
+
+.dm-hotline-number {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: var(--dm-color-danger);
+}
+
+/* ===================================================================
+   PRIMARY ICE SPOTLIGHT CARD
+   =================================================================== */
+.dm-primary-ice-spotlight {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, var(--dm-color-surface) 100%);
+  border: 2px solid rgba(239, 68, 68, 0.4);
+  padding: var(--dm-space-5, 1.25rem);
+  margin-bottom: var(--dm-space-6, 1.5rem);
+  border-radius: var(--dm-radius-lg, 16px);
+}
+
+.dm-ice-spotlight-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--dm-space-3, 0.75rem);
+}
+
+.dm-ice-spotlight-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dm-space-4, 1rem);
+  flex-wrap: wrap;
+}
+
+.dm-ice-spotlight-details h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--dm-color-text);
+}
+
+.dm-ice-role {
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+  color: var(--dm-color-text-soft);
+}
+
+.dm-ice-phone {
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--dm-color-danger);
+}
+
+.dm-ice-spotlight-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-3, 0.75rem);
+}
+
+.dm-ice-call-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 var(--dm-space-5, 1.25rem);
+  background-color: var(--dm-color-danger);
+  color: #ffffff !important;
+  font-weight: 800;
+  font-size: 1rem;
+  border-radius: var(--dm-radius-md, 12px);
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+  transition: all var(--dm-transition-fast);
+}
+
+.dm-ice-call-link:hover {
+  background-color: #dc2626;
+  transform: translateY(-1px);
+}
+
+.dm-ice-msg-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 var(--dm-space-4, 1rem);
+  background-color: var(--dm-color-surface-soft);
+  color: var(--dm-color-text) !important;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-md, 12px);
+  text-decoration: none;
+}
+
+/* ===================================================================
+   TWO-COLUMN WORKFLOW GRID
+   =================================================================== */
+.dm-emergency-layout-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--dm-space-6, 1.5rem);
+}
+
+@media (min-width: 1024px) {
+  .dm-emergency-layout-grid {
+    grid-template-columns: 1.4fr 1fr;
+  }
+}
+
+.dm-emergency-panel {
+  padding: var(--dm-space-5, 1.25rem);
+}
+
+.dm-emergency-tabs {
+  display: flex;
+  gap: var(--dm-space-2, 0.5rem);
+  margin-bottom: var(--dm-space-5, 1.25rem);
+  border-bottom: 1px solid var(--dm-color-border);
+  padding-bottom: var(--dm-space-3, 0.75rem);
+  overflow-x: auto;
+}
+
+.dm-emergency-tab {
+  padding: var(--dm-space-2, 0.5rem) var(--dm-space-4, 1rem);
+  border-radius: var(--dm-radius-md, 12px);
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: var(--dm-color-text-muted);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--dm-transition-fast);
+}
+
+.dm-emergency-tab.active {
+  background-color: var(--dm-color-surface-soft);
+  color: var(--dm-color-text);
+  border-color: var(--dm-color-border);
+}
+
+.dm-contacts-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dm-space-3, 0.75rem);
+}
+
+.dm-contact-card {
+  background-color: var(--dm-color-surface-soft);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-md, 12px);
+  padding: var(--dm-space-4, 1rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dm-space-3, 0.75rem);
+  transition: all var(--dm-transition-fast);
+}
+
+.dm-contact-card:hover {
+  background-color: var(--dm-color-surface);
+  border-color: var(--dm-color-border-hover);
+}
+
+.dm-contact-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--dm-space-3, 0.75rem);
+}
+
+.dm-contact-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.dm-contact-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--dm-space-2, 0.5rem);
+  margin-bottom: 0.2rem;
+  flex-wrap: wrap;
+}
+
+.dm-contact-title-row h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--dm-color-text);
+}
+
+.dm-verified-tag {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--dm-radius-pill, 9999px);
+  background-color: var(--dm-color-primary-subtle);
+  color: var(--dm-color-primary-deep);
+  border: 1px solid var(--dm-color-primary);
+}
+
+.dm-personal-tag {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--dm-radius-pill, 9999px);
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--dm-color-danger);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.dm-contact-cat {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--dm-color-text);
+}
+
+.dm-contact-desc {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.75rem;
+  color: var(--dm-color-text-soft);
+}
+
+.dm-call-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 var(--dm-space-3, 0.75rem);
+  border-radius: var(--dm-radius-md, 12px);
+  background-color: var(--dm-color-surface);
+  border: 1px solid var(--dm-color-border);
+  color: var(--dm-color-danger) !important;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all var(--dm-transition-fast);
+  white-space: nowrap;
+}
+
+.dm-call-button:hover {
+  background-color: var(--dm-color-danger);
+  color: #ffffff !important;
+  border-color: var(--dm-color-danger);
+}
+
+.dm-contact-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--dm-space-2, 0.5rem);
+  border-top: 1px dashed var(--dm-color-border);
+}
+
+.dm-contact-phone-display {
+  font-size: 0.75rem;
+  color: var(--dm-color-text-soft);
+}
+
+.dm-contact-util-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* ===================================================================
+   FORM CARD
+   =================================================================== */
+.dm-emergency-form-card {
+  padding: var(--dm-space-5, 1.25rem);
+  height: fit-content;
+}
+
+.dm-emergency-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dm-space-4, 1rem);
+}

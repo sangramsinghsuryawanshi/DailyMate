@@ -1,0 +1,89 @@
+.dm-select-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.dm-select-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--dm-color-text);
+  user-select: none;
+}
+
+.dm-select-required {
+  color: var(--dm-color-danger);
+  margin-left: 2px;
+}
+
+.dm-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.dm-select {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  padding: 0.65rem 2.2rem 0.65rem 0.9rem;
+  min-height: 44px;
+  background-color: var(--dm-color-surface);
+  color: var(--dm-color-text);
+  border: 1px solid var(--dm-color-border);
+  border-radius: var(--dm-radius-sm, 8px);
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--dm-transition-fast), box-shadow var(--dm-transition-fast);
+}
+
+.dm-select:hover:not(:disabled) {
+  border-color: var(--dm-color-border-hover);
+}
+
+.dm-select:focus {
+  border-color: var(--dm-color-primary);
+  box-shadow: var(--dm-shadow-focus);
+}
+
+.dm-select-arrow {
+  position: absolute;
+  right: 0.9rem;
+  font-size: 0.65rem;
+  color: var(--dm-color-text-soft);
+  pointer-events: none;
+}
+
+/* Error State */
+.dm-select-group--error .dm-select {
+  border-color: var(--dm-color-danger);
+}
+.dm-select-group--error .dm-select:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25);
+}
+
+/* Disabled State */
+.dm-select-group--disabled .dm-select {
+  background-color: var(--dm-color-surface-soft);
+  color: var(--dm-color-text-soft);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.dm-select-message {
+  font-size: 0.775rem;
+  margin: 0.15rem 0 0 0;
+  line-height: 1.35;
+}
+
+.dm-select-message--error {
+  color: var(--dm-color-danger);
+  font-weight: 500;
+}
+
+.dm-select-message--helper {
+  color: var(--dm-color-text-soft);
+}

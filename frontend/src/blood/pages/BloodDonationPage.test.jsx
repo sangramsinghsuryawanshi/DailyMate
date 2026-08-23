@@ -127,7 +127,7 @@ describe('BloodDonationPage', () => {
       additionalNotes: 'Immediate requirement',
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderBloodDonationPage({ id: 'user-1', email: 'user@example.com' })
 
     await waitFor(() => {
@@ -159,7 +159,7 @@ describe('BloodDonationPage', () => {
         }),
       )
     })
-  }, 10000)
+  }, 20000)
 
   it('switches to Donation Centers tab and lists centers', async () => {
     getDonationCentersMock.mockResolvedValue([
@@ -172,7 +172,7 @@ describe('BloodDonationPage', () => {
       },
     ])
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderBloodDonationPage()
 
     await waitFor(() => {

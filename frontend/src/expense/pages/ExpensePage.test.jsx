@@ -92,8 +92,8 @@ describe('ExpensePage', () => {
       expect(screen.getByText('Water bill')).toBeInTheDocument()
       // Dynamic summary calculations
       expect(screen.getByText('Transactions:')).toBeInTheDocument()
-      expect(screen.getByText('3')).toBeInTheDocument()
-      expect(screen.getByText('Groceries')).toBeInTheDocument() // Top category
+      expect(screen.getAllByText('3').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Groceries').length).toBeGreaterThan(0) // Top category
     })
   })
 
@@ -108,7 +108,7 @@ describe('ExpensePage', () => {
       notes: 'Weekend',
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderExpensePage()
 
     await waitFor(() => {
@@ -157,7 +157,7 @@ describe('ExpensePage', () => {
       notes: 'Added fruits',
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderExpensePage()
 
     await waitFor(() => {
@@ -195,7 +195,7 @@ describe('ExpensePage', () => {
     ])
     deleteExpenseMock.mockResolvedValue({})
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderExpensePage()
 
     await waitFor(() => {

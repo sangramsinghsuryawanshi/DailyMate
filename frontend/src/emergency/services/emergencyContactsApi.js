@@ -1,17 +1,13 @@
 import apiClient from '../../services/apiClient'
 
 export const getEmergencyContacts = (params = {}) => {
-  const queryParams = new URLSearchParams()
-  if (params.category && params.category !== 'ALL') queryParams.append('category', params.category)
-  const queryString = queryParams.toString()
-  return apiClient.get(`/emergency-contacts/contacts${queryString ? `?${queryString}` : ''}`).then((res) => res.data)
+  const query = typeof params === 'object' ? params : {}
+  return apiClient.get('/emergency-contacts/contacts', { params: query }).then((res) => res.data)
 }
 
 export const getMyEmergencyContacts = (params = {}) => {
-  const queryParams = new URLSearchParams()
-  if (params.category && params.category !== 'ALL') queryParams.append('category', params.category)
-  const queryString = queryParams.toString()
-  return apiClient.get(`/emergency-contacts/my-contacts${queryString ? `?${queryString}` : ''}`).then((res) => res.data)
+  const query = typeof params === 'object' ? params : {}
+  return apiClient.get('/emergency-contacts/my-contacts', { params: query }).then((res) => res.data)
 }
 
 export const createEmergencyContact = (payload) =>

@@ -1,0 +1,8 @@
+export {
+  Footer,
+  default,
+  FOOTER_PRODUCT_LINKS,
+  FOOTER_COMMUNITY_LINKS,
+  FOOTER_COMPANY_LINKS,
+  FOOTER_SOCIAL_LINKS,
+} from './Footer'

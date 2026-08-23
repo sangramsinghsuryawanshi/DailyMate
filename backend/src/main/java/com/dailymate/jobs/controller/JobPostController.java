@@ -1,11 +1,11 @@
 package com.dailymate.jobs.controller;
 
+import com.dailymate.core.dto.response.PageResponse;
 import com.dailymate.core.security.UserPrincipal;
 import com.dailymate.jobs.dto.request.JobPostRequest;
 import com.dailymate.jobs.dto.response.JobPostResponse;
 import com.dailymate.jobs.service.JobPostService;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,17 +30,22 @@ public class JobPostController {
     }
 
     @GetMapping("/posts")
-    public List<JobPostResponse> getJobPosts(
+    public PageResponse<JobPostResponse> getJobPosts(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String type,
-            @RequestParam(required = false) String status) {
-        return jobPostService.getJobPosts(search, category, type, status);
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return jobPostService.getJobPosts(search, category, type, status, page, size);
     }
 
     @GetMapping("/my-posts")
-    public List<JobPostResponse> getMyJobPosts(@AuthenticationPrincipal UserPrincipal principal) {
-        return jobPostService.getMyJobPosts(principal.user().getId());
+    public PageResponse<JobPostResponse> getMyJobPosts(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return jobPostService.getMyJobPosts(principal.user().getId(), page, size);
     }
 
     @PostMapping("/posts")
@@ -57,6 +62,14 @@ public class JobPostController {
             @PathVariable String id,
             @Valid @RequestBody JobPostRequest request) {
         return jobPostService.updateJobPost(principal.user().getId(), id, request);
+    }
+
+    @PatchMapping("/posts/{id}/status")
+    public JobPostResponse changeStatus(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable String id,
+            @RequestParam String status) {
+        return jobPostService.changeStatus(principal.user().getId(), id, status);
     }
 
     @DeleteMapping("/posts/{id}")

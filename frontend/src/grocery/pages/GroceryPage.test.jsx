@@ -102,7 +102,7 @@ describe('GroceryPage', () => {
       id: 'g3', userId: 'user-1', name: 'Toor Dal', category: 'Grains & Pulses', store: 'Local Kirana', price: 160, unit: '1 kg', location: 'Baner',
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderGroceryPage()
 
     await waitFor(() => {
@@ -136,7 +136,7 @@ describe('GroceryPage', () => {
       { id: 'g4', userId: 'user-1', name: 'Basmati Rice', category: 'Grains & Pulses', store: 'Big Bazaar', price: 240, unit: '5 kg', location: 'Shivajinagar', createdAt: '2026-01-01' },
     ])
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderGroceryPage()
 
     // Wait for loading to finish
@@ -180,7 +180,7 @@ describe('GroceryPage', () => {
       id: 'g6', userId: 'user-1', name: 'Sunflower Oil', category: 'Grains & Pulses', store: 'D-Mart', price: 139, unit: '1 L', location: 'Aundh',
     })
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderGroceryPage()
 
     await waitFor(() => {
@@ -220,7 +220,7 @@ describe('GroceryPage', () => {
     ])
     deleteGroceryItemMock.mockResolvedValue({})
 
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     renderGroceryPage()
 
     await waitFor(() => {

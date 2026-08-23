@@ -5,9 +5,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.dailymate.assistant.tool.AssistantToolDefinition;
 import com.dailymate.assistant.tool.AssistantToolRegistry;
+import com.dailymate.assistant.tool.AuthorizationPolicy;
+import com.dailymate.assistant.tool.DataSensitivity;
+import com.dailymate.assistant.tool.OperationPolicy;
+import com.dailymate.assistant.tool.OperationScope;
+import com.dailymate.assistant.tool.ResourceVisibility;
+import com.dailymate.assistant.tool.TargetScope;
 import com.dailymate.assistant.tool.ToolDomain;
 import com.dailymate.assistant.tool.ToolOperationType;
 import com.dailymate.assistant.tool.ToolRiskTier;
+import com.dailymate.assistant.tool.ToolScope;
 import com.dailymate.core.exception.ForbiddenException;
 import java.util.List;
 import java.util.Map;
@@ -35,9 +42,11 @@ class AssistantToolRegistryTest {
             assertThat(tool.domain()).isNotNull();
             assertThat(tool.operationType()).isNotNull();
             assertThat(tool.riskTier()).isNotNull();
+            assertThat(tool.scope()).isNotNull();
+            assertThat(tool.operationScope()).isNotNull();
             assertThat(tool.allowedRoles()).isNotEmpty();
 
-            if (tool.operationType() == ToolOperationType.READ) {
+            if (tool.operationType() == ToolOperationType.READ || tool.operationType() == ToolOperationType.REPORT) {
                 assertThat(tool.riskTier()).isEqualTo(ToolRiskTier.TIER_1);
             }
 
@@ -45,6 +54,11 @@ class AssistantToolRegistryTest {
                 assertThat(tool.confirmationRequired()).isTrue();
                 assertThat(tool.idempotencyRequired()).isTrue();
                 assertThat(tool.auditRequired()).isTrue();
+            }
+
+            if (tool.destructive()) {
+                assertThat(tool.riskTier()).isEqualTo(ToolRiskTier.TIER_3);
+                assertThat(tool.confirmationRequired()).isTrue();
             }
         }
     }
@@ -67,14 +81,11 @@ class AssistantToolRegistryTest {
                 "invalid.tier3",
                 "Invalid tool definition",
                 ToolDomain.EXPENSE,
-                ToolOperationType.MUTATION,
-                ToolRiskTier.TIER_3,
-                Set.of("USER"),
+                ToolOperationType.CREATE,
+                new AuthorizationPolicy(ToolScope.USER, OperationScope.SINGLE, ResourceVisibility.USER_PRIVATE, TargetScope.OWNED_RESOURCES, Set.of("USER"), true, DataSensitivity.RESTRICTED),
+                new OperationPolicy(ToolRiskTier.TIER_3, false, false, true, true, false, false, false, false), // invalid: confirmationRequired = false
                 List.of("id"),
-                List.of(),
-                false, // invalid: confirmationRequired = false for Tier 3
-                true,
-                true
+                List.of()
         );
 
         assertThatThrownBy(() -> customRegistry.register(invalidTool))
@@ -90,17 +101,14 @@ class AssistantToolRegistryTest {
                 "Invalid read definition",
                 ToolDomain.EXPENSE,
                 ToolOperationType.READ,
-                ToolRiskTier.TIER_3, // invalid: READ cannot be Tier 3
-                Set.of("USER"),
+                new AuthorizationPolicy(ToolScope.USER, OperationScope.SINGLE, ResourceVisibility.PUBLIC, TargetScope.PUBLIC_RESOURCES, Set.of("USER"), false, DataSensitivity.PUBLIC),
+                new OperationPolicy(ToolRiskTier.TIER_3, false, false, false, false, false, false, false, false), // invalid: READ cannot be Tier 3
                 List.of(),
-                List.of(),
-                true,
-                true,
-                true
+                List.of()
         );
 
         assertThatThrownBy(() -> customRegistry.register(invalidTool))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("READ operation must have TIER_1 risk classification");
+                .hasMessageContaining("READ/REPORT operation must have TIER_1 risk classification");
     }
 }

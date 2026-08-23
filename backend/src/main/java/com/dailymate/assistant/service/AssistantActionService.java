@@ -61,6 +61,19 @@ public class AssistantActionService {
         return toProposalResponse(saved);
     }
 
+    @Transactional
+    public void supersedeProposal(String userId, String oldProposalId) {
+        if (oldProposalId == null || oldProposalId.isBlank()) return;
+        actions.findByIdAndUserId(oldProposalId, userId).ifPresent(action -> {
+            if (action.getStatus() == AssistantActionStatus.PENDING) {
+                action.setStatus(AssistantActionStatus.SUPERSEDED);
+                actions.save(action);
+                auditLogger.logActionEvent(
+                        UUID.randomUUID().toString(), oldProposalId, userId, action.getActionType(), "SUPERSEDED", "SUPERSEDED", 0);
+            }
+        });
+    }
+
     public AssistantActionExecutionResponse confirmAction(
             String userId,
             String actionId,
@@ -160,6 +173,11 @@ public class AssistantActionService {
                 "CANCELLED",
                 "Action proposal cancelled.",
                 Instant.now());
+    }
+
+    public Optional<AssistantAction> getAction(String userId, String actionId) {
+        if (actionId == null || actionId.isBlank()) return Optional.empty();
+        return actions.findByIdAndUserId(actionId, userId);
     }
 
     public AssistantActionProposalResponse toProposalResponse(AssistantAction action) {
