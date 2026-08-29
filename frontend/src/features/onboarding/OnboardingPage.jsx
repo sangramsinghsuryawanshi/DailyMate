@@ -98,7 +98,7 @@ export default function OnboardingPage() {
     <div className="dm-onboarding-shell">
       <header className="dm-onboarding-header">
         <div className="dm-onboarding-brand">
-          <img src="/images/DailyMate.png" alt="DailyMate" className="dm-onboarding-logo" />
+          <img src="/images/DailyMateIcon.png" alt="DailyMate" className="dm-onboarding-logo" />
           <span>DailyMate</span>
         </div>
         <button type="button" className="dm-onboarding-skip-btn" onClick={handleSkip}>

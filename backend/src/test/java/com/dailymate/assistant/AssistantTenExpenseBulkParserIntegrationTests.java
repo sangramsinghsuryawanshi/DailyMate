@@ -85,19 +85,19 @@ class AssistantTenExpenseBulkParserIntegrationTests {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AssistantChatRequest(prompt, null))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.proposal").exists())
-                .andExpect(jsonPath("$.proposal.actionType").value("BULK_RECORD_EXPENSES"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.proposedAction").exists())
+                .andExpect(jsonPath("$.proposedAction.actionType").value("BULK_RECORD_EXPENSES"))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
         JsonNode chatJson = objectMapper.readTree(chatResponseBody);
-        JsonNode proposal = chatJson.get("proposal");
-        String actionId = proposal.get("actionId").asText();
-        String payloadJson = proposal.get("payloadJson").asText();
+        JsonNode proposedAction = chatJson.get("proposedAction");
+        String actionId = proposedAction.get("actionId").asText();
+        String parametersJson = proposedAction.get("parametersJson").asText();
 
-        JsonNode itemsArray = objectMapper.readTree(payloadJson);
+        JsonNode itemsArray = objectMapper.readTree(parametersJson);
 
         // Verification 1: Exactly 10 parsed items
         assertThat(itemsArray.isArray()).isTrue();
@@ -114,31 +114,31 @@ class AssistantTenExpenseBulkParserIntegrationTests {
         assertThat(calculatedTotal).isEqualByComparingTo(new BigDecimal("11159.00"));
 
         // Verification 3: Message contains ₹11,159.00 and mentions 10 expenses
-        String replyMessage = chatJson.get("message").asText();
-        assertThat(replyMessage).contains("₹11,159.00");
+        String replyMessage = chatJson.get("response").asText();
+        assertThat(replyMessage).contains("11,159.00");
         assertThat(replyMessage).contains("10 expenses");
-        assertThat(replyMessage).doesNotContain("₹2,026.00");
-        assertThat(replyMessage).doesNotContain("₹31,419.00");
+        assertThat(replyMessage).doesNotContain("2,026.00");
+        assertThat(replyMessage).doesNotContain("31,419.00");
 
         // Verification 4: Zero database mutations before confirmation
         assertThat(expenseRepository.count()).isEqualTo(initialDbCount);
 
         // Step 2: Confirm and execute the proposed bulk action
-        mvc.perform(post("/api/v1/assistant/actions/execute")
+        mvc.perform(post("/api/v1/assistant/actions/" + actionId + "/confirm")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new AssistantActionExecutionRequest(actionId, true))))
+                        .content(objectMapper.writeValueAsString(new AssistantActionExecutionRequest(java.util.UUID.randomUUID().toString()))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("SUCCESS"));
+                .andExpect(jsonPath("$.status").value("EXECUTED"));
 
         // Verification 5: Exactly 10 rows added to the database
         assertThat(expenseRepository.count()).isEqualTo(initialDbCount + 10);
 
         // Verification 6: Verify all 10 expenses are stored with correct dates and amounts in DB
-        List<Expense> stored = expenseRepository.findAll();
+        List<ExpenseEntry> stored = expenseRepository.findAll();
         BigDecimal dbSum = stored.stream()
                 .skip(initialDbCount)
-                .map(Expense::getAmount)
+                .map(ExpenseEntry::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         assertThat(dbSum).isEqualByComparingTo(new BigDecimal("11159.00"));
     }
@@ -154,14 +154,14 @@ class AssistantTenExpenseBulkParserIntegrationTests {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AssistantChatRequest(prompt, null))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.proposal.actionType").value("RECORD_EXPENSE"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.proposedAction.actionType").value("RECORD_EXPENSE"))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
         JsonNode json = objectMapper.readTree(res);
-        JsonNode payload = objectMapper.readTree(json.get("proposal").get("payloadJson").asText());
+        JsonNode payload = objectMapper.readTree(json.get("proposedAction").get("parametersJson").asText());
 
         assertThat(new BigDecimal(payload.get("amount").asText())).isEqualByComparingTo(new BigDecimal("450.00"));
         assertThat(payload.get("spentOn").asText()).isEqualTo("2026-08-15");
@@ -178,7 +178,7 @@ class AssistantTenExpenseBulkParserIntegrationTests {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AssistantChatRequest(prompt, null))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.proposal").doesNotExist());
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.proposedAction").doesNotExist());
     }
 }

@@ -2,7 +2,10 @@ export default function AuthLayout({ children, headline, subheadline }) {
   return (
     <main className="auth-shell">
       <section className="auth-spotlight">
-        <div className="brand-lockup">DailyMate</div>
+        <div className="brand-lockup">
+          <img src="/images/DailyMateIcon.png" alt="DailyMate" className="brand-lockup__logo" />
+          <span>DailyMate</span>
+        </div>
         <div className="spotlight-copy">
           <p className="eyebrow">Everyday life, made easier</p>
           <h1>{headline}</h1>
