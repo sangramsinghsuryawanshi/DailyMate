@@ -277,17 +277,11 @@ input:focus, select:focus, textarea:focus {
   color: var(--color-primary-deep);
 }
 
-.brand-lockup::before {
-  content: 'D';
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.2rem;
-  height: 2.2rem;
+.brand-lockup__logo {
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: contain;
   border-radius: 0.72rem;
-  background: var(--color-primary);
-  color: white;
-  font-size: 1.2rem;
 }
 
 .spotlight-copy {

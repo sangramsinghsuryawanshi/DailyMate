@@ -1171,13 +1171,18 @@ public class AssistantToolRouter {
         }
 
         String category = inferCategory(description, prompt);
+        LocalDate spentOn = LocalDate.now();
+        Matcher dateMatcher = Pattern.compile("(?i)\\b((?:on\\s+)?\\d{4}-\\d{2}-\\d{2}|today|yesterday|tomorrow|(?:\\d{1,2}(?:st|nd|rd|th)?\\s+)?(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)(?:\\s+\\d{1,2})?(?:\\s*,?\\s*\\d{4})?)\\b").matcher(prompt);
+        if (dateMatcher.find()) {
+            spentOn = domainParsers.getDateResolver().resolveDate(dateMatcher.group(1)).orElse(LocalDate.now());
+        }
 
         try {
             Map<String, Object> map = new HashMap<>();
             map.put("category", category);
             map.put("description", description);
             map.put("amount", amount);
-            map.put("spentOn", LocalDate.now().toString());
+            map.put("spentOn", spentOn.toString());
 
             if (conversationId != null) {
                 stateManager.recordUnresolvedParams(userId, conversationId, map);
@@ -1483,6 +1488,11 @@ public class AssistantToolRouter {
             String forText = cleanDescription(mFor.group(1));
             if (!forText.isBlank() && !isGreeting(forText)) return capitalize(forText);
         }
+        Matcher mExp = Pattern.compile("(?i)(?:add|record|log)?\\s*expense\\s+(?:for\\s+|of\\s+)?([a-zA-Z\\s]+?)(?=\\s+₹|\\s+rs\\.?|\\s+inr|\\s+amount|\\s+on\\s+|\\s+for\\s+|\\s+\\d+|$)").matcher(prompt);
+        if (mExp.find()) {
+            String desc = cleanDescription(mExp.group(1));
+            if (!desc.isBlank() && !isGreeting(desc)) return capitalize(desc);
+        }
         Matcher mPattern = Pattern.compile("(?i)(?:for|on|in)\\s+([a-zA-Z\\s]+)").matcher(prompt);
         if (mPattern.find()) {
             String text = cleanDescription(mPattern.group(1));
@@ -1494,11 +1504,16 @@ public class AssistantToolRouter {
     private String cleanDescription(String text) {
         if (text == null) return "";
         String cleaned = text.trim()
-                .replaceAll("(?i)^(?:my|an|a|the|afternoon|morning|evening|night|daily|monthly|named|called|with|for)\\s+", "")
-                .replaceAll("(?i)\\s+(?:and|is|amount|for|to|with|phone|number|in|at)$", "")
+                .replaceAll("(?i)^(?:my|an|a|the|afternoon|morning|evening|night|daily|monthly|named|called|with|for|of|on|in|at|to)\\s+", "")
+                .replaceAll("(?i)\\s+(?:and|is|amount|for|to|with|phone|number|in|at|of|on)$", "")
                 .replaceAll("(?i)\\s+\\d+(?:\\.\\d{1,2})?$", "")
                 .trim();
-        if (cleaned.equalsIgnoreCase("with") || cleaned.equalsIgnoreCase("for") || cleaned.equalsIgnoreCase("and") || cleaned.equalsIgnoreCase("phone")) {
+        if (cleaned.equalsIgnoreCase("with") || cleaned.equalsIgnoreCase("for") || cleaned.equalsIgnoreCase("and")
+                || cleaned.equalsIgnoreCase("phone") || cleaned.equalsIgnoreCase("of") || cleaned.equalsIgnoreCase("on")
+                || cleaned.equalsIgnoreCase("in") || cleaned.equalsIgnoreCase("at") || cleaned.equalsIgnoreCase("to")
+                || cleaned.equalsIgnoreCase("the") || cleaned.equalsIgnoreCase("a") || cleaned.equalsIgnoreCase("an")
+                || cleaned.equalsIgnoreCase("expense") || cleaned.equalsIgnoreCase("expenses")
+                || cleaned.length() < 2) {
             return "";
         }
         return cleaned;

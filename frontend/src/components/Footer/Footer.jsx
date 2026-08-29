@@ -141,7 +141,7 @@ export function Footer({ onCookiePreferencesClick }) {
               <div className="dm-footer__brand-row">
                 <Link to="/" className="dm-footer__brand-link" aria-label="DailyMate Home">
                   <img
-                    src="/images/DailyMate.png"
+                    src="/images/DailyMateIcon.png"
                     alt="DailyMate Logo"
                     className="dm-footer__logo"
                   />

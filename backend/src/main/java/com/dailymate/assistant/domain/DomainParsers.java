@@ -60,6 +60,10 @@ public class DomainParsers {
         this.dateResolver = dateResolver;
     }
 
+    public AssistantDateResolver getDateResolver() {
+        return dateResolver;
+    }
+
     public int countSuppliedItems(String payload) {
         if (payload == null || payload.isBlank()) return 0;
 
@@ -98,10 +102,24 @@ public class DomainParsers {
             return payload.split("(?<=\\S)\\s+(?=\\d+[.)\\-:]+\\s+)");
         }
 
-        // 3. For comma-separated lists, split on commas EXCEPT:
-        //    - Commas within date expressions like "August 1, 2026" or "Aug 10, 2026"
-        //    - Commas within numbers like "1,850" or "2,450"
-        return payload.split("(?<!\\b(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\\s+\\d{1,2})\\s*,\\s*(?!\\d{4}\\b|\\d{3}(?:\\b|\\D))");
+        // 3. For comma-separated text, protect dates and currency numbers with commas
+        String safe = payload;
+        Matcher mDate = Pattern.compile("(?i)\\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\\s+\\d{1,2}\\s*,\\s*\\d{4}\\b").matcher(safe);
+        StringBuilder sb = new StringBuilder();
+        while (mDate.find()) {
+            mDate.appendReplacement(sb, Matcher.quoteReplacement(mDate.group(0).replace(",", "###COMMA###")));
+        }
+        mDate.appendTail(sb);
+        safe = sb.toString();
+
+        // Also protect commas in numbers (e.g. 1,850)
+        safe = safe.replaceAll("(\\d),(\\d{3}\\b)", "$1###COMMA###$2");
+
+        String[] parts = safe.split("\\s*,\\s*");
+        for (int i = 0; i < parts.length; i++) {
+            parts[i] = parts[i].replace("###COMMA###", ",").trim();
+        }
+        return parts;
     }
 
     public ExtractionResult<ParsedExpense> parseExpensesResult(String payload) {

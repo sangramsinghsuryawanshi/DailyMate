@@ -37,7 +37,7 @@ export function Sidebar({
       {/* Brand Header */}
       <div className="dm-sidebar__brand">
         <Link to="/dashboard" className="dm-sidebar__brand-link">
-          <img src="/images/DailyMate.png" alt="DailyMate" className="dm-sidebar__logo" />
+          <img src="/images/DailyMateIcon.png" alt="DailyMate" className="dm-sidebar__logo" />
           {!isCollapsed && <span className="dm-sidebar__brand-title">DailyMate</span>}
         </Link>
         <button
